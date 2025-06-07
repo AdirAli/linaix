@@ -17,7 +17,7 @@ LinAIx is an open-source Linux command-line assistant powered by the Google Gemi
 ### Steps
 1. **Clone the Repository++
    ```bash
-   git clone https://github.com/yAdirAli/linaix.git
+   git clone https://github.com/AdirAli/linaix.git
    cd linaix
    ```
 
