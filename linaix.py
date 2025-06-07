@@ -1,10 +1,10 @@
-#!/home/bryanaliyerima/LinAIx/venv/bin/python3
-
+#!/usr/bin/env python3
 import sys
 import os
 import google.generativeai as genai
 import re
 import json
+import time
 import subprocess
 from pathlib import Path
 from prompt_toolkit import PromptSession
@@ -17,7 +17,7 @@ CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 DEFAULT_CONFIG = {
-    "api_key": "",  # Set by user
+    "api_key": "",  # set by user
     "model": "gemini-1.5-flash",
     "auto_run_safe": False,
     "aliases": {}
@@ -111,15 +111,72 @@ def get_error_explanation(error):
     except Exception:
         return "Unable to explain error."
 
-def execute_command_in_terminal(command):
-    # Simple execution in the current terminal for now (can be enhanced)
+def simulate_typing(command):
+    print("\033[1;34mExecuting command:\033[0m ", end="", flush=True)
+    for char in command:
+        print(char, end="", flush=True)
+        time.sleep(0.05)  # Simulate typing delay
+    print()  # New line after command
+
+def run_command_interactive(command, verbose=False):
+    # Handle 'cd' commands manually to change the Python process's directory
+    if command.strip().startswith("cd "):
+        try:
+            new_dir = command.strip().split(" ", 1)[1]
+            os.chdir(os.path.expanduser(new_dir))
+            print(f"\033[1;32mChanged directory to: {os.getcwd()}\033[0m")
+            return True, ""
+        except Exception as e:
+            return False, f"Error: {str(e)}"
+
+    # Simulate typing the command
+    simulate_typing(command)
+
+    # Execute the command using subprocess
     try:
-        result = subprocess.run(command, shell=True, check=False, text=True, capture_output=True)
-        return result.returncode == 0, result.stdout, result.stderr
+        result = subprocess.run(command, shell=True, text=True, capture_output=True)
+        if result.stdout:
+            print("\033[1;36mOutput:\033[0m")
+            print(result.stdout.strip())
+        if result.stderr:
+            print("\033[1;31mError:\033[0m")
+            print(result.stderr.strip())
+        return result.returncode == 0, result.stderr.strip()
     except Exception as e:
-        return False, "", f"Error: {str(e)}"
+        return False, f"Error: {str(e)}"
+
+def run_command_normal(command, verbose=False):
+    # Handle 'cd' commands manually to change the Python process's directory
+    if command.strip().startswith("cd "):
+        try:
+            new_dir = command.strip().split(" ", 1)[1]
+            os.chdir(os.path.expanduser(new_dir))
+            print(f"\033[1;32mChanged directory to: {os.getcwd()}\033[0m")
+            return True, ""
+        except Exception as e:
+            return False, f"Error: {str(e)}"
+
+    # Prompt user to execute the command
+    confirm = input("\033[1;33mDo you want to execute this command? (y/n): \033[0m").strip().lower()
+    if confirm in ['y', 'yes']:
+        simulate_typing(command)
+        try:
+            result = subprocess.run(command, shell=True, text=True, capture_output=True)
+            if result.stdout:
+                print("\033[1;36mOutput:\033[0m")
+                print(result.stdout.strip())
+            if result.stderr:
+                print("\033[1;31mError:\033[0m")
+                print(result.stderr.strip())
+            return result.returncode == 0, result.stderr.strip()
+        except Exception as e:
+            return False, f"Error: {str(e)}"
+    else:
+        print("\033[1;33mCommand not executed.\033[0m")
+        return False, "Command execution skipped by user"
 
 def show_changes():
+    # Show the current directory and list its contents
     print(f"\033[1;34mCurrent Directory: {os.getcwd()}\033[0m")
     try:
         result = subprocess.run("ls -l", shell=True, text=True, capture_output=True)
@@ -144,12 +201,11 @@ def interactive_mode(first_time=True):
         print("\033[1;36m- Use TAB for autocomplete based on history\033[0m")
         print("\033[1;36m- Press Ctrl+D to exit\033[0m")
         print("\033[1;35m" + "=" * 50 + "\033[0m")
-        show_changes()
+        show_changes()  # Show initial directory state
 
     completer = WordCompleter(get_autocomplete_suggestions(), ignore_case=True)
     session = PromptSession("\n🌟 LinAIx> ", completer=completer, style=style)
     command_count = 0
-
     while True:
         try:
             user_input = session.prompt()
@@ -182,23 +238,15 @@ def interactive_mode(first_time=True):
                     continue
 
             # Execute the command
-            success, stdout, stderr = execute_command_in_terminal(command)
+            success, error = run_command_interactive(command, verbose=False)
             save_history(user_input, command)
 
-            # Display the output
-            if stdout:
-                print("\033[1;36mOutput:\033[0m")
-                print(stdout)
-            if stderr:
-                print("\033[1;31mError:\033[0m")
-                print(stderr)
-
+            # Show changes after execution
             if success:
                 print("\033[1;32mSuccess\033[0m")
                 show_changes()
             else:
-                print("\033[1;31mError: Command failed.\033[0m")
-                error = stderr or stdout
+                print(f"\033[1;31mError: {error}\033[0m")
                 # Generate alternative if the command failed
                 new_command, new_explanation = generate_command(user_input, error, verbose=False)
                 if "Error" in new_command:
@@ -210,19 +258,13 @@ def interactive_mode(first_time=True):
                     if confirm not in ['y', 'yes']:
                         print("\033[1;31mNot executed.\033[0m")
                         continue
-                success, stdout, stderr = execute_command_in_terminal(new_command)
+                success, error = run_command_interactive(new_command, verbose=False)
                 save_history(user_input, new_command)
-                if stdout:
-                    print("\033[1;36mOutput:\033[0m")
-                    print(stdout)
-                if stderr:
-                    print("\033[1;31mError:\033[0m")
-                    print(stderr)
                 if success:
                     print("\033[1;32mSuccess\033[0m")
                     show_changes()
                 else:
-                    print("\033[1;31mError: Command failed.\033[0m")
+                    print(f"\033[1;31mError: {error}\033[0m")
 
         except EOFError:
             print("\n\033[1;31mExiting interactive mode.\033[0m")
@@ -236,7 +278,7 @@ def print_help():
     print("\033[1;34mUsage:\033[0m linaix [options] 'task description'")
     print("\n\033[1;34mOptions:\033[0m")
     print("  \033[1;32m'task'\033[0m            Generate a command for the task (e.g., 'create a python file test.py')")
-    print("  \033[1;32m--interactive\033[0m     Enter interactive mode")
+    print("  \033[1;32m--interactive\033[0m     Enter interactive mode with dynamic terminal experience")
     print("  \033[1;32m--verbose\033[0m         Show command and error explanations")
     print("  \033[1;32m--history\033[0m         Display command history")
     print("  \033[1;32m--reuse <index>\033[0m   Reuse a command from history by index")
@@ -245,11 +287,11 @@ def print_help():
     print("  \033[1;32m--list-aliases\033[0m         List all aliases")
     print("  \033[1;32m--help\033[0m            Show this detailed help")
     print("\n\033[1;34mExamples:\033[0m")
-    print("  linaix 'list all python files'          # Generates 'ls *.py'")
-    print("  linaix --verbose 'create a directory'   # Includes explanation")
-    print("  linaix --interactive                    # Interactive mode")
+    print("  linaix 'list all python files'          # Generates 'ls *.py' and prompts for execution")
+    print("  linaix --verbose 'create a directory'   # Includes explanation and prompts")
+    print("  linaix --interactive                    # Interactive mode with live terminal experience")
     print("  linaix --add-alias listpy 'list all python files'  # Adds alias")
-    print("  linaix listpy                          # Uses alias")
+    print("  linaix listpy                          # Uses alias and prompts")
     print("\n\033[1;34mSetup:\033[0m")
     print("  1. Obtain a Google API key from https://aistudio.google.com/app/apikey")
     print("  2. Set it in ~/.linaix/config.json or export GOOGLE_API_KEY='your-api-key'")
@@ -312,18 +354,12 @@ def main():
             print("\033[1;34mReusing Command:\033[0m")
             print(f"\033[1;32m{command}\033[0m")
             print("\033[1;34m-" * 40 + "\033[0m")
-            success, stdout, stderr = execute_command_in_terminal(command)
-            if stdout:
-                print("\033[1;36mOutput:\033[0m")
-                print(stdout)
-            if stderr:
-                print("\033[1;31mError:\033[0m")
-                print(stderr)
+            success, error = run_command_normal(command, args.verbose)
             if success:
                 print("\033[1;32mSuccess\033[0m")
                 show_changes()
             else:
-                print("\033[1;31mError: Command failed.\033[0m")
+                print(f"\033[1;31m{error}\033[0m")
         else:
             print("\033[1;31mInvalid history index.\033[0m")
         return
@@ -350,24 +386,18 @@ def main():
             return
 
         save_history(user_input, command)
-        success, stdout, stderr = execute_command_in_terminal(command)
-        if stdout:
-            print("\033[1;36mOutput:\033[0m")
-            print(stdout)
-        if stderr:
-            print("\033[1;31mError:\033[0m")
-            print(stderr)
+        success, error = run_command_normal(command, args.verbose)
         if success:
             print("\033[1;32mSuccess\033[0m")
             show_changes()
         else:
-            print("\033[1;31mError: Command failed.\033[0m")
+            print(f"\033[1;31m{error}\033[0m")
             if args.verbose:
-                explanation = get_error_explanation(stderr or stdout)
+                explanation = get_error_explanation(error)
                 print("\033[1;34mError Explanation:\033[0m")
                 print(f"\033[1;36m{explanation}\033[0m")
             print("\033[1;34mGenerating alternative...\033[0m")
-            new_command, new_explanation = generate_command(user_input, stderr or stdout, args.verbose)
+            new_command, new_explanation = generate_command(user_input, error, args.verbose)
             print("\033[1;34mNew Command:\033[0m")
             print(f"\033[1;32m{new_command}\033[0m")
             if args.verbose and new_explanation:
@@ -378,18 +408,12 @@ def main():
                 print(f"\033[1;31m{new_command}\033[0m")
                 return
             save_history(user_input, new_command)
-            success, stdout, stderr = execute_command_in_terminal(new_command)
-            if stdout:
-                print("\033[1;36mOutput:\033[0m")
-                print(stdout)
-            if stderr:
-                print("\033[1;31mError:\033[0m")
-                print(stderr)
+            success, error = run_command_normal(new_command, args.verbose)
             if success:
                 print("\033[1;32mSuccess\033[0m")
                 show_changes()
             else:
-                print("\033[1;31mError: Command failed.\033[0m")
+                print(f"\033[1;31m{error}\033[0m")
 
 if __name__ == "__main__":
     main()
