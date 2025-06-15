@@ -1,5 +1,4 @@
-#!/home/bryanaliyerima/LinAIx/venv/bin/python3
-
+#!/usr/bin/env python3
 import sys
 import os
 import google.generativeai as genai
