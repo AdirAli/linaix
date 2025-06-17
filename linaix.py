@@ -200,8 +200,8 @@ def run_command_normal(command, verbose=False):
             return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
     else:
         print(f"{ANSI_YELLOW}Command not executed.{ANSI_RESET}")
-        return False, "Command execution skipped by user"
-
+        sys.exit(0)
+        
 def show_changes():
     print(f"{ANSI_BLUE}Current Directory: {os.getcwd()}{ANSI_RESET}")
     try:
