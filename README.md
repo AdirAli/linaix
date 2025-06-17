@@ -1,7 +1,6 @@
 # LinAIx: Linux Command Assistant
 
-LinAIx is an open-source Linux command-line assistant powered by the Google Gemini API. It helps users generate and execute Linux commands interactively or via specific tasks, running directly in the current terminal. Great way to learn linux command through hand on experience.
-                                                                          
+LinAIx is an open-source Linux command-line assistant powered by the Google Gemini API. It helps users generate and execute Linux commands interactively or via specific tasks, running directly in the current terminal. Great way to learn linux command through hand on experience. 
                                                                             ![alt text](image.png)
 ## Features
 - Generate Linux commands for tasks (e.g., "create a new file").
