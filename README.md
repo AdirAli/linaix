@@ -1,76 +1,114 @@
-# LinAIx: Linux Command Assistant
+# LinAIx
 
-LinAIx is an open-source Linux command-line assistant powered by the Google Gemini API. It helps users generate and execute Linux commands interactively or via specific tasks, running directly in the current terminal. Great way to learn linux command through hand on experience. 
-                                                                            ![alt text](image.png)
-## Features
-- Generate Linux commands for tasks (e.g., "create a new file").
-- Interactive mode with command history and aliases.
-- Safe execution with confirmation for destructive commands.
-- Support for custom aliases and verbose explanations.
+> **AI-powered Linux Command Assistant**
 
-## Installation
+LinAIx is a command-line tool that lets you control your Linux system using natural language. Powered by Google Gemini, it generates safe, context-aware Linux commands from your plain English requests.
 
-### Prerequisites
-- Python 3.6 or higher
-- pip (Python package manager)
 
-### Steps
-1. **Clone the Repository++
-   ```bash
-   git clone https://github.com/AdirAli/linaix.git
-   cd linaix
-   ```
 
-2. **Install Dependencies**
-   ```bash
-   sudo pip3 install google-generativeai prompt_toolkit
-   ```
+---
 
-3. **Obtain a Google API Key**
-   - Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and create an API key.
-   - Set the API key in one of two ways:
-     - Edit `~/.linaix/config.json` and add your key:
-       ```json
-       {
-         "api_key": "your-google-api-key",
-         "model": "gemini-1.5-flash",
-         "auto_run_safe": false,
-         "aliases": {}
-       }
-       ```
-     - Or export it as an environment variable:
-       ```bash
-       export GOOGLE_API_KEY="your-google-api-key"
-       ```
+## ✨ Features
 
-4. **Make the Script Executable**
-   ```bash
-   chmod +x linaix.py
-   ```
+- **Natural Language Terminal**: Open a real terminal window and type what you want to do—no shell commands needed!
+- **AI Command Generation**: Converts your tasks ("list all python files", "make a backup of my documents") into safe, correct Linux commands.
+- **Command History**: Keeps a record of your tasks and generated commands for easy reuse.
+- **Aliases**: Create shortcuts for common tasks (e.g., `listpy` for "list all python files").
+- **Destructive Command Safety**: Warns you before running dangerous commands like `rm`.
+- **Google Gemini Integration**: Uses the Gemini API for smart, context-aware command generation.
+- **Configurable**: All settings are managed in a simple JSON config file.
 
-5. **Run the Script**
-   - Locally:
-     ```bash
-     ./linaix.py --interactive
-     ```
-   - Or move to a global path (optional):
-     ```bash
-     sudo cp linaix.py /usr/local/bin/linaix
-     sudo chmod +x /usr/local/bin/linaix
-     linaix --interactive
-     ```
+---
 
-## Usage
-- Run `linaix --help` for available options.
-- Example: `linaix 'list all python files'` generates and executes `ls *.py` in the current terminal.
-- Interactive mode: Enter tasks or commands directly (e.g., `make a new file test.txt`).
+## 🚀 Quick Start
 
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute. We welcome enhancements like terminal control, error logging, or additional AI models.
+### 1. **Install Requirements**
+```bash
+pip install -r requirements.txt
+```
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### 2. **Get a Google API Key**
+- Sign up at [Google AI Studio](https://aistudio.google.com/app/apikey)
+- Copy your API key
 
-## Acknowledgments
-- Powered by the Google Gemini API.
-- Built to expand my knowledge curve and contrinute to the open source community
+### 3. **Configure LinAIx**
+- On first run, LinAIx will create a config file at `~/.linaix/config.json`.
+- Or, set your API key with:
+  ```bash
+  python linaix.py --set-api-key 'your-api-key-here'
+  ```
+- Or, export it as an environment variable:
+  ```bash
+  export GOOGLE_API_KEY='your-api-key-here'
+  ```
+
+---
+
+## 🖥️ Usage
+
+### **Natural Language Interactive Mode** (Linux only)
+Open a new AI-powered terminal:
+```bash
+python linaix.py --interactive
+```
+- A new GNOME Terminal window will open.
+- Type your tasks in plain English (e.g., `find all .txt files and zip them`).
+- The AI will generate and run the right command for you.
+- Type `exit` to quit.
+
+### **One-off Command Generation**
+Generate and (optionally) run a command for a single task:
+```bash
+python linaix.py 'list all python files'
+```
+- Add `--verbose` to see an explanation:
+  ```bash
+  python linaix.py --verbose 'create a directory'
+  ```
+
+### **Aliases**
+- Add an alias:
+  ```bash
+  python linaix.py --add-alias listpy 'list all python files'
+  ```
+- Use an alias:
+  ```bash
+  python linaix.py listpy
+  ```
+- List aliases:
+  ```bash
+  python linaix.py --list-aliases
+  ```
+- Remove an alias:
+  ```bash
+  python linaix.py --remove-alias listpy
+  ```
+
+### **Command History**
+- Show history:
+  ```bash
+  python linaix.py --history
+  ```
+- Reuse a command from history:
+  ```bash
+  python linaix.py --reuse 2
+  ```
+
+---
+
+## ⚠️ Notes
+- **Linux only:** The interactive mode requires GNOME Terminal and is not supported on Windows or macOS.
+- **No raw shell commands in interactive mode:** Only natural language tasks are accepted.
+- **API key required:** You must provide a valid Google API key.
+
+---
+
+## 🛠️ Configuration
+- Default config is stored in `default_linaix_config.json` (in the repo).
+- User config is at `~/.linaix/config.json`.
+- You can edit the config file directly to change settings (model, aliases, etc).
+
+---
+
+## 📄 License
+MIT
