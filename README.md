@@ -4,8 +4,6 @@
 
 LinAIx is a command-line tool that lets you control your Linux system using natural language. Powered by Google Gemini, it generates safe, context-aware Linux commands from your plain English requests.
 
-
-
 ---
 
 ## ✨ Features
@@ -109,6 +107,3 @@ python linaix.py 'list all python files'
 - You can edit the config file directly to change settings (model, aliases, etc).
 
 ---
-
-## 📄 License
-MIT
