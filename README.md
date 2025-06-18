@@ -1,4 +1,7 @@
-# LinAIx
+# LinAIx - Open Source command line AI Assistant
+
+ ![Uploading image.png…]()
+
 
 > **AI-powered Linux Command Assistant**
 
