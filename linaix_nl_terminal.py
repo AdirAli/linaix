@@ -13,6 +13,7 @@ import subprocess
 from pathlib import Path
 import argparse
 import google.generativeai as genai
+import shutil
 
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
@@ -21,6 +22,7 @@ ANSI_BLUE = "\033[1;34m"
 ANSI_CYAN = "\033[1;36m"
 ANSI_MAGENTA = "\033[1;35m"
 ANSI_RESET = "\033[0m"
+ANSI_BOLD = "\033[1m"
 
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -101,11 +103,51 @@ def run_command(command):
     except Exception as e:
         return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
+def print_centered(text, color=""):
+    width = shutil.get_terminal_size((80, 20)).columns
+    for line in text.splitlines():
+        if line.strip() == "":
+            print()
+        else:
+            print(color + line.center(width) + ANSI_RESET)
+
+def print_linaix_banner():
+    banner = f"""
+██╗     ██╗███╗   ██╗ █████╗ ██╗██╗  ██╗
+██║     ██║████╗  ██║██╔══██╗██║╚██╗██╔╝
+██║     ██║██╔██╗ ██║███████║██║ ╚███╔╝ 
+██║     ██║██║╚██╗██║██╔══██║██║ ██╔██╗ 
+███████╗██║██║ ╚████║██║  ██║██║██╔╝ ██╗
+╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝
+"""
+    print_centered(banner, ANSI_GREEN + ANSI_BOLD)
+
+def print_intro():
+    width = shutil.get_terminal_size((80, 20)).columns
+    border = "+" + ("-" * (width - 2)) + "+"
+    print(ANSI_MAGENTA + border + ANSI_RESET)
+    print_centered("Welcome to LinAIx Natural Language Terminal!", ANSI_MAGENTA + ANSI_BOLD)
+    print_centered("AI-powered Linux shell: Just describe what you want to do!", ANSI_CYAN)
+    print_centered("Type 'exit' to quit.", ANSI_YELLOW)
+    print_centered("", ANSI_RESET)
+    print_centered("Usage Examples:", ANSI_BOLD + ANSI_CYAN)
+    print_centered("- create a new folder called test", ANSI_CYAN)
+    print_centered("- list all python files", ANSI_CYAN)
+    print_centered("- show disk usage", ANSI_CYAN)
+    print_centered("- move all .txt files to backup/", ANSI_CYAN)
+    print_centered("- install the latest version of git", ANSI_CYAN)
+    print_centered("", ANSI_RESET)
+    print_centered("Tips:", ANSI_BOLD + ANSI_GREEN)
+    print_centered("• Only natural language tasks are accepted.", ANSI_GREEN)
+    print_centered("• No raw shell commands.", ANSI_GREEN)
+    print_centered("• Destructive actions (like rm) will ask for confirmation.", ANSI_GREEN)
+    print_centered("• Have fun!", ANSI_GREEN)
+
+    print(ANSI_MAGENTA + border + ANSI_RESET)
+
 def nl_terminal(verbose=False):
-    print(f"{ANSI_MAGENTA}{'='*60}{ANSI_RESET}")
-    print(f"{ANSI_MAGENTA}Welcome to LinAIx Natural Language Terminal!{ANSI_RESET}")
-    print(f"{ANSI_CYAN}Type what you want to do. No shell commands allowed! Type 'exit' to quit.{ANSI_RESET}")
-    print(f"{ANSI_MAGENTA}{'='*60}{ANSI_RESET}")
+    print_linaix_banner()
+    print_intro()
     while True:
         try:
             user = os.getenv('USER') or os.getenv('USERNAME') or 'user'

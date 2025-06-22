@@ -1,112 +1,372 @@
-# LinAIx - Open Source command line AI Assistant
+<div align="center">
 
- ![Uploading image.png…]()
+# 🐧 LinAIx
 
+**AI-Powered Linux Command Assistant**
 
-> **AI-powered Linux Command Assistant**
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux-orange.svg)](https://www.linux.org/)
+[![AI](https://img.shields.io/badge/AI-Gemini-purple.svg)](https://aistudio.google.com/)
 
-LinAIx is a command-line tool that lets you control your Linux system using natural language. Powered by Google Gemini, it generates safe, context-aware Linux commands from your plain English requests.
+> **Improve your Linux experience with natural language commands powered by Google Gemini AI**
+
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
+
+</div>
+
+---
+
+## 🎯 What is LinAIx?
+
+LinAIx is a  command-line tool bridging the gap between human language and Linux system shell command. Instead of memorizing complex shell commands, simply describe what you want to do in plain English, and LinAIx will generate and execute the appropriate Linux commands for you.
+
+### 🌟 Why LinAIx?
+
+- **🚀 Productivity Boost**: No more Googling commands or reading man pages
+- **🛡️ Safety First**: Built-in protection against destructive operations
+- **🧠 AI-Powered**: Leverages Google Gemini for intelligent command generation
+- **📚 Learning Tool**: Understand what commands do with detailed explanations
+- **⚡ Interactive Mode**: Full AI-powered terminal experience
 
 ---
 
 ## ✨ Features
 
-- **Natural Language Terminal**: Open a real terminal window and type what you want to do—no shell commands needed!
-- **AI Command Generation**: Converts your tasks ("list all python files", "make a backup of my documents") into safe, correct Linux commands.
-- **Command History**: Keeps a record of your tasks and generated commands for easy reuse.
-- **Aliases**: Create shortcuts for common tasks (e.g., `listpy` for "list all python files").
-- **Destructive Command Safety**: Warns you before running dangerous commands like `rm`.
-- **Google Gemini Integration**: Uses the Gemini API for smart, context-aware command generation.
-- **Configurable**: All settings are managed in a simple JSON config file.
+### 🤖 **Natural Language Processing**
+Turn everyday language into precise Linux commands:
+```bash
+"Show me all Python files in the current directory"
+# Generates: ls *.py
+
+"Create a backup of my documents folder"
+# Generates: cp -r ~/Documents ~/Documents_backup_$(date +%Y%m%d)
+```
+
+### 🖥️ **Interactive AI Terminal**
+Launch a full-featured AI-powered terminal session:
+```bash
+linaix --interactive
+```
+- **Smart Context Awareness**: Understands your current directory and system state
+- **Real-time Command Generation**: Instantly converts your requests to commands
+- **Error Recovery**: Automatically suggests fixes when commands fail
+- **Natural Exit**: Simply type `exit` or `quit` to close
+
+### 📚 **Command History & Learning**
+- **Persistent History**: All your commands are saved for future reference
+- **Command Reuse**: Replay previous commands with `--reuse <index>`
+- **Learning Insights**: Understand what each command does with `--verbose`
+
+### 🏷️ **Smart Aliases**
+Create custom shortcuts for your most common tasks:
+```bash
+# Create an alias
+linaix --add-alias listpy "list all python files"
+
+# Use the alias
+linaix listpy
+```
+
+### 🛡️ **Safety Features**
+- **Destructive Command Warnings**: Confirmation prompts for dangerous operations
+- **Safe Command Generation**: AI prioritizes non-destructive solutions
+- **Error Handling**: Graceful handling of command failures with alternative suggestions
+
+### ⚙️ **Flexible Configuration**
+- **JSON Configuration**: Easy-to-edit settings file
+- **Environment Variables**: Support for `GOOGLE_API_KEY` environment variable
+- **Model Selection**: Choose your preferred Gemini model
+- **Custom Aliases**: Persistent alias management
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Installation
 
-### 1. **Install Requirements**
+### Prerequisites
+
+- **Python 3.8+**
+- **Linux Distribution** (Ubuntu, Debian, Fedora, etc.)
+- **Google Gemini API Key** ([Get one here](https://aistudio.google.com/app/apikey))
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/AdirAli/linaix.git
+cd linaix
+```
+
+### Step 2: Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. **Get a Google API Key**
-- Sign up at [Google AI Studio](https://aistudio.google.com/app/apikey)
-- Copy your API key
+### Step 3: Install Linux Dependencies
 
-### 3. **Configure LinAIx**
-- On first run, LinAIx will create a config file at `~/.linaix/config.json`.
-- Or, set your API key with:
-  ```bash
-  python linaix.py --set-api-key 'your-api-key-here'
-  ```
-- Or, export it as an environment variable:
-  ```bash
-  export GOOGLE_API_KEY='your-api-key-here'
-  ```
-
----
-
-## 🖥️ Usage
-
-### **Natural Language Interactive Mode** (Linux only)
-Open a new AI-powered terminal:
+#### For Ubuntu/Debian:
 ```bash
-python linaix.py --interactive
+sudo apt update
+sudo apt install gnome-terminal python3-pip
 ```
-- A new GNOME Terminal window will open.
-- Type your tasks in plain English (e.g., `find all .txt files and zip them`).
-- The AI will generate and run the right command for you.
-- Type `exit` to quit.
 
-### **One-off Command Generation**
-Generate and (optionally) run a command for a single task:
+#### For Fedora/RHEL/CentOS:
 ```bash
-python linaix.py 'list all python files'
+sudo dnf install gnome-terminal python3-pip
+# or for older versions:
+sudo yum install gnome-terminal python3-pip
 ```
-- Add `--verbose` to see an explanation:
-  ```bash
-  python linaix.py --verbose 'create a directory'
-  ```
 
-### **Aliases**
-- Add an alias:
-  ```bash
-  python linaix.py --add-alias listpy 'list all python files'
-  ```
-- Use an alias:
-  ```bash
-  python linaix.py listpy
-  ```
-- List aliases:
-  ```bash
-  python linaix.py --list-aliases
-  ```
-- Remove an alias:
-  ```bash
-  python linaix.py --remove-alias listpy
-  ```
+#### For Arch Linux:
+```bash
+sudo pacman -S gnome-terminal python-pip
+```
 
-### **Command History**
-- Show history:
-  ```bash
-  python linaix.py --history
-  ```
-- Reuse a command from history:
-  ```bash
-  python linaix.py --reuse 2
-  ```
+### Step 4: Configure Your API Key
+
+**Option A: Interactive Setup**
+```bash
+python3 linaix.py --set-api-key 'your-api-key-here'
+```
+
+**Option B: Environment Variable**
+```bash
+export GOOGLE_API_KEY='your-api-key-here'
+```
+
+**Option C: Manual Configuration**
+```bash
+# Edit the config file
+nano ~/.linaix/config.json
+```
+
+### Step 5: Set Up Global Access (Optional but Recommended)
+
+Make the `linaix` command available globally so you can run it from any directory:
+
+**Create a Symbolic Link**
+```bash
+# Make the script executable
+chmod +x linaix.py
+
+# Create a symbolic link in /usr/local/bin (requires sudo)
+sudo ln -s $(pwd)/linaix.py /usr/local/bin/linaix
+
+# Now you can run linaix from anywhere
+linaix --interactive
+```
+
+---
+
+## 🎮 Quick Start
+
+### 1. **Generate Your First Command**
+```bash
+linaix "list all files in the current directory"
+```
+
+### 2. **Launch Interactive Mode**
+```bash
+linaix --interactive
+```
+
+### 3. **Create Your First Alias**
+```bash
+linaix --add-alias cleanup "remove all temporary files"
+```
 
 ---
 
-## ⚠️ Notes
-- **Linux only:** The interactive mode requires GNOME Terminal and is not supported on Windows or macOS.
-- **No raw shell commands in interactive mode:** Only natural language tasks are accepted.
-- **API key required:** You must provide a valid Google API key.
+## 📖 Usage Guide
+
+### **Interactive Mode** 🖥️
+The most interesting way to use LinAIx - a full AI-powered terminal experience:
+
+```bash
+linaix --interactive
+```
+
+**Interactive Mode Features:**
+- 🎯 **Natural Language Input**: Type what you want to do in plain English
+- 🔄 **Real-time Execution**: Commands are generated and executed immediately
+- 📊 **Visual Feedback**: Clear success/error indicators
+- 🧠 **Context Awareness**: AI understands your current directory and system state
+- 🔧 **Error Recovery**: Automatic suggestions when commands fail
+
+**Example Interactive Session:**
+```
+user@host:/home/user $ create a new project folder called myapp
+Generated Command: mkdir -p myapp
+✓ Success
+
+user@host:/home/user $ list all files in the project
+Generated Command: ls -la myapp/
+✓ Success
+
+user@host:/home/user $ install git if it's not already installed
+Generated Command: sudo apt update && sudo apt install -y git
+✓ Success
+```
+
+### **One-off Commands** ⚡
+Generate commands for specific tasks:
+
+```bash
+# Basic command generation
+linaix "find all PDF files in the current directory"
+
+# With explanation
+linaix --verbose "create a backup of my documents"
+
+# Complex tasks
+linaix "install the latest version of Node.js and npm"
+```
+
+### **Alias Management** 🏷️
+Create and manage custom shortcuts:
+
+```bash
+# Add an alias
+linaix --add-alias listpy "list all python files"
+linaix --add-alias cleanup "remove all .tmp files"
+
+# Use aliases
+linaix listpy
+linaix cleanup
+
+# List all aliases
+linaix --list-aliases
+
+# Remove an alias
+linaix --remove-alias cleanup
+```
+
+### **Command History** 📚
+Access and reuse previous commands:
+
+```bash
+# View command history
+linaix --history
+
+# Reuse a specific command
+linaix --reuse 2
+```
 
 ---
 
-## 🛠️ Configuration
-- Default config is stored in `default_linaix_config.json` (in the repo).
-- User config is at `~/.linaix/config.json`.
-- You can edit the config file directly to change settings (model, aliases, etc).
+## ⚙️ Configuration
+
+### **Configuration File Location**
+```
+~/.linaix/config.json
+```
+
+### **Configuration Options**
+```json
+{
+  "api_key": "your-gemini-api-key",
+  "model": "gemini-1.5-flash",
+  "auto_run_safe": false,
+  "aliases": {
+    "listpy": "list all python files",
+    "cleanup": "remove temporary files"
+  }
+}
+```
+
+### **Environment Variables**
+```bash
+export GOOGLE_API_KEY="your-api-key-here"
+```
 
 ---
+
+## 🖼️ Screenshots
+
+<div align="center">
+
+### Interactive Mode Demo
+![LinAIx Interactive Mode](Interactivemode.png)
+
+*Screenshot showing the AI-powered terminal interface with natural language input and command generation*
+
+</div>
+
+---
+
+## 🔧 Troubleshooting
+
+### **Common Issues**
+
+#### **"gnome-terminal not found"**
+```bash
+# Ubuntu/Debian
+sudo apt install gnome-terminal
+
+# Fedora
+sudo dnf install gnome-terminal
+
+# Arch Linux
+sudo pacman -S gnome-terminal
+```
+
+#### **"No Google API key found"**
+```bash
+# Set your API key
+export GOOGLE_API_KEY="your-api-key-here"
+
+# Or use the interactive setup
+linaix --set-api-key "your-api-key-here"
+```
+
+#### **"Permission denied"**
+```bash
+# Make the script executable
+chmod +x linaix.py
+
+# Or run with python explicitly
+python3 linaix.py --interactive
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+### **Getting Started**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Test thoroughly
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+### **Development Setup**
+```bash
+git clone https://github.com/yourusername/linaix.git
+cd linaix
+pip install -r requirements.txt
+```
+
+### **Code Style**
+- Follow PEP 8 guidelines
+- Add type hints where appropriate
+- Include docstrings for new functions
+- Write tests for new features
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+<div align="center">
+
+**Made wit for the Linux community**
+
+[![GitHub stars](https://img.shields.io/github/stars/AdirAli/linaix?style=social)](https://github.com/yourusername/linaix)
+[![GitHub forks](https://img.shields.io/github/forks/AdirAli/linaix?style=social)](https://github.com/yourusername/linaix)
+[![GitHub issues](https://img.shields.io/github/issues/AdirAli/linaix)](https://github.com/yourusername/linaix/issues)
+
+</div>

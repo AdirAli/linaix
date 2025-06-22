@@ -12,6 +12,7 @@ from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 import argparse
 import platform
+import shutil
 
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -26,6 +27,7 @@ ANSI_CYAN = "\033[1;36m"
 ANSI_MAGENTA = "\033[1;35m"
 ANSI_RESET = "\033[0m"
 ANSI_SEPARATOR = "\033[1;34m" + "-" * 40 + "\033[0m"
+ANSI_BOLD = "\033[1m"
 
 # Constants for prompt_toolkit Colors
 PTK_GREEN = "ansigreen"
@@ -248,10 +250,84 @@ def print_help():
     print(f"  2. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
 
+def print_centered(text, color=""):
+    width = shutil.get_terminal_size((80, 20)).columns
+    for line in text.splitlines():
+        if line.strip() == "":
+            print()
+        else:
+            print(color + line.center(width) + ANSI_RESET)
+
+def print_linaix_banner():
+    banner = f"""
+██╗     ██╗███╗   ██╗ █████╗ ██╗██╗  ██╗
+██║     ██║████╗  ██║██╔══██╗██║╚██╗██╔╝
+██║     ██║██╔██╗ ██║███████║██║ ╚███╔╝ 
+██║     ██║██║╚██╗██║██╔══██║██║ ██╔██╗ 
+███████╗██║██║ ╚████║██║  ██║██║██╔╝ ██╗
+╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝
+"""
+    print_centered(banner, ANSI_GREEN + ANSI_BOLD)
+
+def print_intro():
+    width = shutil.get_terminal_size((80, 20)).columns
+    border = "+" + ("-" * (width - 2)) + "+"
+    print(ANSI_MAGENTA + border + ANSI_RESET)
+    print_centered("Welcome to LinAIx Natural Language Terminal!", ANSI_MAGENTA + ANSI_BOLD)
+    print_centered("AI-powered Linux shell: Just describe what you want to do!", ANSI_CYAN)
+    print_centered("Type 'exit' to quit.", ANSI_YELLOW)
+    print_centered("", ANSI_RESET)
+    print_centered("Usage Examples:", ANSI_BOLD + ANSI_CYAN)
+    print_centered("- create a new folder called test", ANSI_CYAN)
+    print_centered("- list all python files", ANSI_CYAN)
+    print_centered("- show disk usage", ANSI_CYAN)
+    print_centered("- move all .txt files to backup/", ANSI_CYAN)
+    print_centered("- install the latest version of git", ANSI_CYAN)
+    print_centered("", ANSI_RESET)
+    print_centered("Tips:", ANSI_BOLD + ANSI_GREEN)
+    print_centered("• Only natural language tasks are accepted.", ANSI_GREEN)
+    print_centered("• No raw shell commands.", ANSI_GREEN)
+    print_centered("• Destructive actions (like rm) will ask for confirmation.", ANSI_GREEN)
+    print_centered("• Have fun!", ANSI_GREEN)
+
+    print(ANSI_MAGENTA + border + ANSI_RESET)
+
+def nl_terminal(verbose=False):
+    print_linaix_banner()
+    print_intro()
+    while True:
+        try:
+            user = os.getenv('USER') or os.getenv('USERNAME') or 'user'
+            host = os.uname().nodename if hasattr(os, 'uname') else 'host'
+            cwd = os.getcwd()
+            short_cwd = os.path.basename(cwd) or '/'
+            prompt = f"{ANSI_GREEN}{user}@{host}{ANSI_RESET}:{ANSI_BLUE}{cwd}{ANSI_RESET} $ "
+            user_input = input(prompt).strip()
+            if not user_input:
+                continue
+            if user_input.lower() in ['exit', 'quit']:
+                print(f"{ANSI_GREEN}Goodbye!{ANSI_RESET}")
+                break
+            command, explanation = generate_command(user_input, verbose=verbose)
+            if not command:
+                print(f"{ANSI_RED}Could not generate a command for your request.{ANSI_RESET}")
+                continue
+            print(f"{ANSI_BLUE}Generated Command:{ANSI_RESET} {ANSI_GREEN}{command}{ANSI_RESET}")
+            if verbose and explanation:
+                print(f"{ANSI_BLUE}Explanation:{ANSI_RESET} {ANSI_CYAN}{explanation}{ANSI_RESET}")
+            success, error = run_command_interactive(command)
+            if success:
+                print(f"{ANSI_GREEN}✓ Success{ANSI_RESET}")
+            else:
+                print(f"{ANSI_RED}✗ Error: {error}{ANSI_RESET}")
+        except (EOFError, KeyboardInterrupt):
+            print(f"\n{ANSI_GREEN}Goodbye!{ANSI_RESET}")
+            break
+
 def main():
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
-    parser.add_argument("--interactive", action="store_true", help="Run in interactive natural language mode (opens a new terminal)")
+    parser.add_argument("--interactive", action="store_true", help="Run in interactive natural language mode")
     parser.add_argument("--verbose", action="store_true", help="Show command explanations (for direct command generation only)")
     parser.add_argument("--history", action="store_true", help="Show command history")
     parser.add_argument("--reuse", type=str, help="Reuse command from history by index")
@@ -301,20 +377,8 @@ def main():
         return
 
     if args.interactive:
-        nl_terminal_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "linaix_nl_terminal.py")
-        if platform.system() == "Windows":
-            subprocess.Popen([
-                "cmd", "/c", "start", "cmd", "/k", f"python {nl_terminal_path}"
-            ])
-        else:
-            subprocess.Popen([
-                "gnome-terminal",
-                "--",
-                "python3",
-                nl_terminal_path
-            ])
-        print(f"{ANSI_GREEN}Launching LinAIx Natural Language Terminal in a new window...{ANSI_RESET}")
-        sys.exit(0)
+        nl_terminal(verbose=args.verbose)
+        return
 
     user_input = " ".join(args.task) if args.task else ""
     if not user_input:
