@@ -192,7 +192,7 @@ Run LinAIx in interactive mode for a natural language terminal experience:
 python3 linaix.py --interactive
 ```
 
-This will open a new terminal window with the LinAIx natural language terminal. The system will try multiple terminal emulators in this order: xterm, konsole, gnome-terminal, xfce4-terminal, mate-terminal. If none are available, it will run in the current terminal.
+This will run the LinAIx natural language terminal directly in your current terminal window.
 
 **Interactive Mode Features:**
 - 🎯 **Natural Language Input**: Type what you want to do in plain English

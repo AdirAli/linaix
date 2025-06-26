@@ -376,9 +376,8 @@ def main():
         return
 
     if args.interactive:
-        # Try to create a new gnome-terminal window, fallback to current terminal
-        if not create_new_terminal_window():
-            nl_terminal(verbose=args.verbose)
+        # Run interactive mode in current terminal
+        nl_terminal(verbose=args.verbose)
         return
 
     user_input = " ".join(args.task) if args.task else ""
