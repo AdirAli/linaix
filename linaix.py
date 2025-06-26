@@ -11,7 +11,6 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 import argparse
-import platform
 import shutil
 
 CONFIG_DIR = Path.home() / ".linaix"
@@ -320,55 +319,29 @@ def nl_terminal(verbose=False):
             break
 
 def create_new_terminal_window():
-    """Create a new terminal window/tab for interactive mode"""
+    """Create a new terminal window/tab for interactive mode (Linux only)"""
     script_path = Path(__file__).resolve()
     
-    if platform.system() == "Windows":
-        # Windows: Use start command to open new window
+    # Linux: Try different terminal emulators
+    terminals = [
+        ("gnome-terminal", ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]),
+        ("konsole", ["konsole", "-e", f"python3 {script_path} --interactive"]),
+        ("xterm", ["xterm", "-e", f"python3 {script_path} --interactive"]),
+        ("terminator", ["terminator", "-e", f"python3 {script_path} --interactive"]),
+        ("alacritty", ["alacritty", "-e", f"python3 {script_path} --interactive"]),
+        ("kitty", ["kitty", "python3", str(script_path), "--interactive"]),
+    ]
+    
+    for term_name, cmd in terminals:
         try:
-            subprocess.run([
-                "start", "cmd", "/k", 
-                f"python \"{script_path}\" --interactive"
-            ], shell=True, check=True)
-            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new terminal window...{ANSI_RESET}")
+            subprocess.run(cmd, check=True)
+            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {term_name} window...{ANSI_RESET}")
             return True
-        except subprocess.CalledProcessError:
-            print(f"{ANSI_RED}Failed to open new terminal window. Running in current terminal.{ANSI_RESET}")
-            return False
-    elif platform.system() == "Darwin":  # macOS
-        # macOS: Use osascript to open new terminal
-        try:
-            script = f'''
-            tell application "Terminal"
-                do script "cd '{os.getcwd()}' && python3 '{script_path}' --interactive"
-                activate
-            end tell
-            '''
-            subprocess.run(["osascript", "-e", script], check=True)
-            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new terminal window...{ANSI_RESET}")
-            return True
-        except subprocess.CalledProcessError:
-            print(f"{ANSI_RED}Failed to open new terminal window. Running in current terminal.{ANSI_RESET}")
-            return False
-    else:  # Linux
-        # Linux: Try different terminal emulators
-        terminals = [
-            ("gnome-terminal", ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]),
-            ("konsole", ["konsole", "-e", f"python3 {script_path} --interactive"]),
-            ("xterm", ["xterm", "-e", f"python3 {script_path} --interactive"]),
-            ("terminator", ["terminator", "-e", f"python3 {script_path} --interactive"]),
-        ]
-        
-        for term_name, cmd in terminals:
-            try:
-                subprocess.run(cmd, check=True)
-                print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {term_name} window...{ANSI_RESET}")
-                return True
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                continue
-        
-        print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
-        return False
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    
+    print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
+    return False
 
 def main():
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)

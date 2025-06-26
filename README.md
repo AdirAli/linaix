@@ -199,8 +199,6 @@ linaix --interactive
 - 🧠 **Context Awareness**: AI understands your current directory and system state
 - 🔧 **Error Recovery**: Automatic suggestions when commands fail
 
-> **⚠️ Platform Limitation**: Interactive mode is only available on Linux systems. On Windows or macOS, you'll see an error message and be prompted to use the standard command mode instead.
-
 **Example Interactive Session:**
 ```
 user@host:/home/user $ create a new project folder called myapp
