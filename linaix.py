@@ -376,8 +376,9 @@ def main():
         return
 
     if args.interactive:
-        # Run interactive mode in current terminal (more reliable)
-        nl_terminal(verbose=args.verbose)
+        # Try to create a new gnome-terminal window, fallback to current terminal
+        if not create_new_terminal_window():
+            nl_terminal(verbose=args.verbose)
         return
 
     user_input = " ".join(args.task) if args.task else ""
@@ -508,6 +509,20 @@ def manage_aliases(args):
             print(f"{ANSI_BLUE}Defined Aliases:{ANSI_RESET}")
             for name, task in config["aliases"].items():
                 print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
+
+def create_new_terminal_window():
+    """Create a new gnome-terminal window for interactive mode"""
+    script_path = Path(__file__).resolve()
+    
+    try:
+        # Use gnome-terminal to open a new window
+        cmd = ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]
+        subprocess.run(cmd, check=True)
+        print(f"{ANSI_GREEN}✓ Opening LinAIx in a new gnome-terminal window...{ANSI_RESET}")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print(f"{ANSI_RED}Could not open new gnome-terminal window. Running in current terminal.{ANSI_RESET}")
+        return False
 
 if __name__ == "__main__":
     main()

@@ -186,11 +186,13 @@ linaix --add-alias cleanup "remove all temporary files"
 ## 📖 Usage Guide
 
 ### **Interactive Mode** 🖥️
-The most interesting way to use LinAIx - a full AI-powered terminal experience:
+Run LinAIx in interactive mode for a natural language terminal experience:
 
 ```bash
-linaix --interactive
+python3 linaix.py --interactive
 ```
+
+This will open a new gnome-terminal window with the LinAIx natural language terminal. If gnome-terminal is not available, it will run in the current terminal.
 
 **Interactive Mode Features:**
 - 🎯 **Natural Language Input**: Type what you want to do in plain English
