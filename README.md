@@ -198,6 +198,7 @@ linaix --interactive
 - 📊 **Visual Feedback**: Clear success/error indicators
 - 🧠 **Context Awareness**: AI understands your current directory and system state
 - 🔧 **Error Recovery**: Automatic suggestions when commands fail
+- 🖥️ **Current Terminal**: Runs in your current terminal session (no new windows)
 
 **Example Interactive Session:**
 ```
@@ -315,18 +316,6 @@ export GOOGLE_API_KEY="your-api-key-here"
 
 ### **Common Issues**
 
-#### **"gnome-terminal not found"**
-```bash
-# Ubuntu/Debian
-sudo apt install gnome-terminal
-
-# Fedora
-sudo dnf install gnome-terminal
-
-# Arch Linux
-sudo pacman -S gnome-terminal
-```
-
 #### **"No Google API key found"**
 ```bash
 # Use the interactive setup (recommended)
@@ -346,17 +335,6 @@ chmod +x linaix.py
 
 # Or run with python explicitly
 python3 linaix.py --interactive
-```
-
-#### **"Interactive mode is only supported on Linux systems"**
-```bash
-# This error appears on Windows or macOS
-# Use standard command mode instead:
-linaix "your task description"
-linaix --verbose "your task description"
-
-# Interactive mode requires Linux-specific terminal features
-# that are not available on other operating systems
 ```
 
 ---

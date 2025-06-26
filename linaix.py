@@ -222,7 +222,7 @@ def print_help():
     print(f"{ANSI_BLUE}Usage:{ANSI_RESET} linaix [options] 'task description'")
     print(f"\n{ANSI_BLUE}Options:{ANSI_RESET}")
     print(f"  {ANSI_GREEN}'task'{ANSI_RESET}            Generate a command for the task (e.g., 'create a python file test.py')")
-    print(f"  {ANSI_GREEN}--interactive{ANSI_RESET}     Open a new terminal for natural language mode (AI shell)")
+    print(f"  {ANSI_GREEN}--interactive{ANSI_RESET}     Run in interactive natural language mode")
     print(f"  {ANSI_GREEN}--verbose{ANSI_RESET}         Show command explanations (for direct command generation only)")
     print(f"  {ANSI_GREEN}--history{ANSI_RESET}         Display command history")
     print(f"  {ANSI_GREEN}--reuse <index>{ANSI_RESET}   Reuse command from history by index")
@@ -235,7 +235,7 @@ def print_help():
     print(f"\n{ANSI_BLUE}Examples:{ANSI_RESET}")
     print(f"  linaix 'list all python files'          # Generates 'ls *.py' and prompts for execution")
     print(f"  linaix --verbose 'create a directory'   # Includes explanation and prompts")
-    print(f"  linaix --interactive                   # Opens natural language AI shell in a new terminal")
+    print(f"  linaix --interactive                   # Runs natural language AI shell in current terminal")
     print(f"  linaix --add-alias listpy 'list all python files'  # Adds alias")
     print(f"  linaix listpy                          # Uses alias and prompts")
     print(f"\n{ANSI_BLUE}Setup:{ANSI_RESET}")
@@ -318,31 +318,6 @@ def nl_terminal(verbose=False):
             print(f"\n{ANSI_GREEN}Goodbye!{ANSI_RESET}")
             break
 
-def create_new_terminal_window():
-    """Create a new terminal window/tab for interactive mode (Linux only)"""
-    script_path = Path(__file__).resolve()
-    
-    # Linux: Try different terminal emulators
-    terminals = [
-        ("gnome-terminal", ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]),
-        ("konsole", ["konsole", "-e", f"python3 {script_path} --interactive"]),
-        ("xterm", ["xterm", "-e", f"python3 {script_path} --interactive"]),
-        ("terminator", ["terminator", "-e", f"python3 {script_path} --interactive"]),
-        ("alacritty", ["alacritty", "-e", f"python3 {script_path} --interactive"]),
-        ("kitty", ["kitty", "python3", str(script_path), "--interactive"]),
-    ]
-    
-    for term_name, cmd in terminals:
-        try:
-            subprocess.run(cmd, check=True)
-            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {term_name} window...{ANSI_RESET}")
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            continue
-    
-    print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
-    return False
-
 def main():
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
@@ -401,9 +376,8 @@ def main():
         return
 
     if args.interactive:
-        # Try to create a new terminal window, fallback to current terminal
-        if not create_new_terminal_window():
-            nl_terminal(verbose=args.verbose)
+        # Run interactive mode in current terminal (more reliable)
+        nl_terminal(verbose=args.verbose)
         return
 
     user_input = " ".join(args.task) if args.task else ""
