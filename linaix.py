@@ -511,18 +511,29 @@ def manage_aliases(args):
                 print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
 
 def create_new_terminal_window():
-    """Create a new gnome-terminal window for interactive mode"""
+    """Create a new terminal window for interactive mode"""
     script_path = Path(__file__).resolve()
     
-    try:
-        # Use gnome-terminal to open a new window
-        cmd = ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]
-        subprocess.run(cmd, check=True)
-        print(f"{ANSI_GREEN}✓ Opening LinAIx in a new gnome-terminal window...{ANSI_RESET}")
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print(f"{ANSI_RED}Could not open new gnome-terminal window. Running in current terminal.{ANSI_RESET}")
-        return False
+    # Try different terminal emulators in order of preference
+    terminal_commands = [
+        ["xterm", "-e", "python3", str(script_path), "--interactive"],
+        ["konsole", "-e", "python3", str(script_path), "--interactive"],
+        ["gnome-terminal", "--", "python3", str(script_path), "--interactive"],
+        ["xfce4-terminal", "-e", "python3", str(script_path), "--interactive"],
+        ["mate-terminal", "-e", "python3", str(script_path), "--interactive"]
+    ]
+    
+    for cmd in terminal_commands:
+        try:
+            subprocess.run(cmd, check=True)
+            terminal_name = cmd[0]
+            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {terminal_name} window...{ANSI_RESET}")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    
+    print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
+    return False
 
 if __name__ == "__main__":
     main()
