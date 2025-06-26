@@ -74,9 +74,10 @@ linaix listpy
 - **Error Handling**: Graceful handling of command failures with alternative suggestions
 
 ### ⚙️ **Flexible Configuration**
-- **JSON Configuration**: Easy-to-edit settings file
+- **Interactive Setup**: Easy setup with `--setup` command
+- **JSON Configuration**: Easy-to-edit settings file at `~/.linaix/config.json`
 - **Environment Variables**: Support for `GOOGLE_API_KEY` environment variable
-- **Model Selection**: Choose your preferred Gemini model
+- **Model Selection**: Choose your preferred Gemini model during setup
 - **Custom Aliases**: Persistent alias management
 
 ---
@@ -122,10 +123,11 @@ sudo pacman -S gnome-terminal python-pip
 
 ### Step 4: Configure Your API Key
 
-**Option A: Interactive Setup**
+**Option A: Interactive Setup (Recommended)**
 ```bash
-python3 linaix.py --set-api-key 'your-api-key-here'
+python3 linaix.py --setup
 ```
+This will guide you through setting up your API key and choosing your preferred Gemini model interactively.
 
 **Option B: Environment Variable**
 ```bash
@@ -134,9 +136,15 @@ export GOOGLE_API_KEY='your-api-key-here'
 
 **Option C: Manual Configuration**
 ```bash
-# Edit the config file
+# The config file will be created automatically at ~/.linaix/config.json
+# You can edit it manually if needed
 nano ~/.linaix/config.json
 ```
+
+**Available Models:**
+- `gemini-1.5-flash` (fast, good for most tasks) - **Default**
+- `gemini-1.5-pro` (more capable, slower)
+- `gemini-pro` (legacy model)
 
 ### Step 5: Set Up Global Access (Optional but Recommended)
 
@@ -190,6 +198,8 @@ linaix --interactive
 - 📊 **Visual Feedback**: Clear success/error indicators
 - 🧠 **Context Awareness**: AI understands your current directory and system state
 - 🔧 **Error Recovery**: Automatic suggestions when commands fail
+
+> **⚠️ Platform Limitation**: Interactive mode is only available on Linux systems. On Windows or macOS, you'll see an error message and be prompted to use the standard command mode instead.
 
 **Example Interactive Session:**
 ```
@@ -259,6 +269,8 @@ linaix --reuse 2
 ~/.linaix/config.json
 ```
 
+The configuration file is automatically created on first run with sensible defaults. You can modify it manually or use the interactive setup command.
+
 ### **Configuration Options**
 ```json
 {
@@ -270,6 +282,15 @@ linaix --reuse 2
     "cleanup": "remove temporary files"
   }
 }
+```
+
+### **Setup Commands**
+```bash
+# Interactive setup (recommended)
+linaix --setup
+
+# Set API key directly
+linaix --set-api-key "your-api-key-here"
 ```
 
 ### **Environment Variables**
@@ -310,10 +331,13 @@ sudo pacman -S gnome-terminal
 
 #### **"No Google API key found"**
 ```bash
-# Set your API key
+# Use the interactive setup (recommended)
+linaix --setup
+
+# Or set your API key via environment variable
 export GOOGLE_API_KEY="your-api-key-here"
 
-# Or use the interactive setup
+# Or set API key directly
 linaix --set-api-key "your-api-key-here"
 ```
 
@@ -324,6 +348,17 @@ chmod +x linaix.py
 
 # Or run with python explicitly
 python3 linaix.py --interactive
+```
+
+#### **"Interactive mode is only supported on Linux systems"**
+```bash
+# This error appears on Windows or macOS
+# Use standard command mode instead:
+linaix "your task description"
+linaix --verbose "your task description"
+
+# Interactive mode requires Linux-specific terminal features
+# that are not available on other operating systems
 ```
 
 ---

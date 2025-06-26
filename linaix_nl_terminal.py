@@ -26,35 +26,27 @@ ANSI_BOLD = "\033[1m"
 
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DEFAULT_CONFIG_FILE = Path(__file__).parent / "default_linaix_config.json"
 
-def load_default_config():
-    try:
-        with DEFAULT_CONFIG_FILE.open("r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"{ANSI_RED}Error loading default config: {str(e)}{ANSI_RESET}")
-        return {
-            "api_key": "",
-            "model": "gemini-1.5-flash",
-            "auto_run_safe": False,
-            "aliases": {}
-        }
+DEFAULT_CONFIG = {
+    "api_key": "",
+    "model": "gemini-1.5-flash",
+    "auto_run_safe": False,
+    "aliases": {}
+}
 
 def load_config():
-    default_config = load_default_config()
     if not CONFIG_DIR.exists():
         CONFIG_DIR.mkdir()
     if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
         with CONFIG_FILE.open("w") as f:
-            json.dump(default_config, f, indent=2)
+            json.dump(DEFAULT_CONFIG, f, indent=2)
     try:
         with CONFIG_FILE.open("r") as f:
             config = json.load(f)
     except json.JSONDecodeError:
         with CONFIG_FILE.open("w") as f:
-            json.dump(default_config, f, indent=2)
-        config = default_config.copy()
+            json.dump(DEFAULT_CONFIG, f, indent=2)
+        config = DEFAULT_CONFIG.copy()
     if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
         config["api_key"] = os.environ["GOOGLE_API_KEY"]
     if not config["api_key"]:

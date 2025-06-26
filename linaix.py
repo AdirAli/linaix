@@ -17,7 +17,6 @@ import shutil
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
-DEFAULT_CONFIG_FILE = Path(__file__).parent / "default_linaix_config.json"
 
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
@@ -56,33 +55,26 @@ DESTRUCTIVE_COMMANDS = ['rm', 'dd', 'chmod', 'chown', 'mkfs']
 
 HISTORY_LIMIT = 100
 
-def load_default_config():
-    try:
-        with DEFAULT_CONFIG_FILE.open("r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"{ANSI_RED}Error loading default config: {str(e)}{ANSI_RESET}")
-        return {
-            "api_key": "",
-            "model": "gemini-1.5-flash",
-            "auto_run_safe": False,
-            "aliases": {}
-        }
+DEFAULT_CONFIG = {
+    "api_key": "",
+    "model": "gemini-1.5-flash",
+    "auto_run_safe": False,
+    "aliases": {}
+}
 
 def load_config():
-    default_config = load_default_config()
     if not CONFIG_DIR.exists():
         CONFIG_DIR.mkdir()
     if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
         with CONFIG_FILE.open("w") as f:
-            json.dump(default_config, f, indent=2)
+            json.dump(DEFAULT_CONFIG, f, indent=2)
     try:
         with CONFIG_FILE.open("r") as f:
             config = json.load(f)
     except json.JSONDecodeError:
         with CONFIG_FILE.open("w") as f:
-            json.dump(default_config, f, indent=2)
-        config = default_config.copy()
+            json.dump(DEFAULT_CONFIG, f, indent=2)
+        config = DEFAULT_CONFIG.copy()
     if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
         config["api_key"] = os.environ["GOOGLE_API_KEY"]
     if not config["api_key"]:
@@ -239,6 +231,8 @@ def print_help():
     print(f"  {ANSI_GREEN}--remove-alias <name>{ANSI_RESET}     Remove an alias")
     print(f"  {ANSI_GREEN}--list-aliases{ANSI_RESET}         List all aliases")
     print(f"  {ANSI_GREEN}--help{ANSI_RESET}            Show this detailed help")
+    print(f"  {ANSI_GREEN}--set-api-key{ANSI_RESET}     Set the Google API key interactively")
+    print(f"  {ANSI_GREEN}--setup{ANSI_RESET}            Interactive setup for API key and model")
     print(f"\n{ANSI_BLUE}Examples:{ANSI_RESET}")
     print(f"  linaix 'list all python files'          # Generates 'ls *.py' and prompts for execution")
     print(f"  linaix --verbose 'create a directory'   # Includes explanation and prompts")
@@ -246,8 +240,9 @@ def print_help():
     print(f"  linaix --add-alias listpy 'list all python files'  # Adds alias")
     print(f"  linaix listpy                          # Uses alias and prompts")
     print(f"\n{ANSI_BLUE}Setup:{ANSI_RESET}")
-    print(f"  1. Obtain a Google API key from https://aistudio.google.com/app/apikey")
-    print(f"  2. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
+    print(f"  1. Run: {ANSI_GREEN}linaix --setup{ANSI_RESET} for interactive setup")
+    print(f"  2. Or obtain a Google API key from https://aistudio.google.com/app/apikey")
+    print(f"  3. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
 
 def print_centered(text, color=""):
@@ -324,6 +319,57 @@ def nl_terminal(verbose=False):
             print(f"\n{ANSI_GREEN}Goodbye!{ANSI_RESET}")
             break
 
+def create_new_terminal_window():
+    """Create a new terminal window/tab for interactive mode"""
+    script_path = Path(__file__).resolve()
+    
+    if platform.system() == "Windows":
+        # Windows: Use start command to open new window
+        try:
+            subprocess.run([
+                "start", "cmd", "/k", 
+                f"python \"{script_path}\" --interactive"
+            ], shell=True, check=True)
+            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new terminal window...{ANSI_RESET}")
+            return True
+        except subprocess.CalledProcessError:
+            print(f"{ANSI_RED}Failed to open new terminal window. Running in current terminal.{ANSI_RESET}")
+            return False
+    elif platform.system() == "Darwin":  # macOS
+        # macOS: Use osascript to open new terminal
+        try:
+            script = f'''
+            tell application "Terminal"
+                do script "cd '{os.getcwd()}' && python3 '{script_path}' --interactive"
+                activate
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", script], check=True)
+            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new terminal window...{ANSI_RESET}")
+            return True
+        except subprocess.CalledProcessError:
+            print(f"{ANSI_RED}Failed to open new terminal window. Running in current terminal.{ANSI_RESET}")
+            return False
+    else:  # Linux
+        # Linux: Try different terminal emulators
+        terminals = [
+            ("gnome-terminal", ["gnome-terminal", "--", "python3", str(script_path), "--interactive"]),
+            ("konsole", ["konsole", "-e", f"python3 {script_path} --interactive"]),
+            ("xterm", ["xterm", "-e", f"python3 {script_path} --interactive"]),
+            ("terminator", ["terminator", "-e", f"python3 {script_path} --interactive"]),
+        ]
+        
+        for term_name, cmd in terminals:
+            try:
+                subprocess.run(cmd, check=True)
+                print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {term_name} window...{ANSI_RESET}")
+                return True
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+        
+        print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
+        return False
+
 def main():
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
@@ -336,10 +382,15 @@ def main():
     parser.add_argument("--list-aliases", action="store_true", help="List all aliases")
     parser.add_argument("--help", action="store_true", help="Show this detailed help")
     parser.add_argument("--set-api-key", type=str, help="Set the Google API key interactively")
+    parser.add_argument("--setup", action="store_true", help="Interactive setup for API key and model")
     args = parser.parse_args()
 
     if args.help:
         print_help()
+        return
+
+    if args.setup:
+        set_api_key()
         return
 
     if args.set_api_key:
@@ -377,7 +428,9 @@ def main():
         return
 
     if args.interactive:
-        nl_terminal(verbose=args.verbose)
+        # Try to create a new terminal window, fallback to current terminal
+        if not create_new_terminal_window():
+            nl_terminal(verbose=args.verbose)
         return
 
     user_input = " ".join(args.task) if args.task else ""
@@ -427,6 +480,87 @@ def main():
             show_changes()
         else:
             print(f"{ANSI_RED}{error}{ANSI_RESET}")
+
+def set_api_key(api_key=None):
+    """Set the API key interactively or via parameter"""
+    if api_key is None:
+        print(f"{ANSI_CYAN}Setting up Google API Key for LinAIx{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}1. Get your API key from: https://aistudio.google.com/app/apikey{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}2. Enter your API key below:{ANSI_RESET}")
+        api_key = input(f"{ANSI_GREEN}API Key: {ANSI_RESET}").strip()
+        
+        if not api_key:
+            print(f"{ANSI_RED}No API key provided. Setup cancelled.{ANSI_RESET}")
+            return
+    
+    # Get model preference
+    print(f"{ANSI_CYAN}Available models:{ANSI_RESET}")
+    print(f"{ANSI_GREEN}1. gemini-1.5-flash (fast, good for most tasks){ANSI_RESET}")
+    print(f"{ANSI_GREEN}2. gemini-1.5-pro (more capable, slower){ANSI_RESET}")
+    print(f"{ANSI_GREEN}3. gemini-pro (legacy model){ANSI_RESET}")
+    
+    model_choice = input(f"{ANSI_YELLOW}Choose model (1-3, default: 1): {ANSI_RESET}").strip()
+    
+    model_map = {
+        "1": "gemini-1.5-flash",
+        "2": "gemini-1.5-pro", 
+        "3": "gemini-pro"
+    }
+    
+    selected_model = model_map.get(model_choice, "gemini-1.5-flash")
+    
+    # Load current config or create new one
+    config = {}
+    if CONFIG_FILE.exists():
+        try:
+            with CONFIG_FILE.open("r") as f:
+                config = json.load(f)
+        except:
+            config = DEFAULT_CONFIG
+    else:
+        config = DEFAULT_CONFIG
+    
+    # Update config
+    config["api_key"] = api_key
+    config["model"] = selected_model
+    
+    # Save config
+    if not CONFIG_DIR.exists():
+        CONFIG_DIR.mkdir()
+    
+    with CONFIG_FILE.open("w") as f:
+        json.dump(config, f, indent=2)
+    
+    print(f"{ANSI_GREEN}✓ API key and model configured successfully!{ANSI_RESET}")
+    print(f"{ANSI_CYAN}Model: {selected_model}{ANSI_RESET}")
+    print(f"{ANSI_CYAN}Config saved to: {CONFIG_FILE}{ANSI_RESET}")
+
+def manage_aliases(args):
+    """Manage aliases for the linaix command"""
+    config = load_config()
+    
+    if args.add_alias:
+        name, task = args.add_alias
+        config["aliases"][name] = task
+        save_config(config)
+        print(f"{ANSI_GREEN}✓ Alias '{name}' added for task: '{task}'{ANSI_RESET}")
+    
+    elif args.remove_alias:
+        name = args.remove_alias
+        if name in config["aliases"]:
+            del config["aliases"][name]
+            save_config(config)
+            print(f"{ANSI_GREEN}✓ Alias '{name}' removed{ANSI_RESET}")
+        else:
+            print(f"{ANSI_RED}Alias '{name}' not found{ANSI_RESET}")
+    
+    elif args.list_aliases:
+        if not config["aliases"]:
+            print(f"{ANSI_YELLOW}No aliases defined{ANSI_RESET}")
+        else:
+            print(f"{ANSI_BLUE}Defined Aliases:{ANSI_RESET}")
+            for name, task in config["aliases"].items():
+                print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
 
 if __name__ == "__main__":
     main()
