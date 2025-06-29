@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+LinAIx: Linux Command Assistant powered by Gemini API
+A secure, AI-powered tool for generating and executing Linux commands.
+"""
 import sys
 import os
 import google.generativeai as genai
@@ -6,17 +10,27 @@ import re
 import json
 import time
 import subprocess
+import shlex
+import logging
 from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 import argparse
 import shutil
+from typing import Optional, Tuple, Dict, Any, List
+import platform
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Constants
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 
+# ANSI color codes
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
 ANSI_YELLOW = "\033[1;33m"
@@ -48,11 +62,33 @@ STYLE_DICT = {
 }
 STYLE = Style.from_dict(STYLE_DICT)
 
-DIRECT_COMMANDS = ['cd', 'ls', 'pwd', 'mkdir', 'touch', 'rm', 'cat', 'echo']
+# Security: Whitelist of safe commands
+SAFE_COMMANDS = {
+    'cd', 'ls', 'pwd', 'mkdir', 'touch', 'cat', 'echo', 'head', 'tail',
+    'grep', 'find', 'wc', 'sort', 'uniq', 'cut', 'tr', 'sed', 'awk',
+    'df', 'du', 'free', 'ps', 'top', 'htop', 'who', 'whoami', 'date',
+    'cal', 'uptime', 'uname', 'hostname', 'which', 'whereis', 'locate',
+    'file', 'stat', 'chmod', 'chown', 'cp', 'mv', 'ln', 'rm', 'rmdir',
+    'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'wget', 'curl', 'git',
+    'apt', 'apt-get', 'dpkg', 'snap', 'pip', 'python', 'python3',
+    'node', 'npm', 'npx', 'docker', 'docker-compose'
+}
 
-DESTRUCTIVE_COMMANDS = ['rm', 'dd', 'chmod', 'chown', 'mkfs']
+# Security: Dangerous commands that require extra confirmation
+DANGEROUS_COMMANDS = {
+    'rm', 'dd', 'chmod', 'chown', 'mkfs', 'fdisk', 'parted', 'mount',
+    'umount', 'shutdown', 'reboot', 'halt', 'poweroff', 'kill', 'killall',
+    'pkill', 'systemctl', 'service', 'iptables', 'ufw', 'firewall-cmd'
+}
+
+# Security: Commands that should never be executed
+BLOCKED_COMMANDS = {
+    'sudo', 'su', 'doas', 'pkexec', 'gksudo', 'kdesudo', 'xdg-sudo'
+}
 
 HISTORY_LIMIT = 100
+MAX_INPUT_LENGTH = 1000
+MAX_COMMAND_LENGTH = 500
 
 DEFAULT_CONFIG = {
     "api_key": "",
@@ -61,148 +97,490 @@ DEFAULT_CONFIG = {
     "aliases": {}
 }
 
-def load_config():
-    if not CONFIG_DIR.exists():
-        CONFIG_DIR.mkdir()
-    if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
-        with CONFIG_FILE.open("w") as f:
-            json.dump(DEFAULT_CONFIG, f, indent=2)
+class SecurityError(Exception):
+    """Custom exception for security violations."""
+    pass
+
+class ValidationError(Exception):
+    """Custom exception for validation errors."""
+    pass
+
+def validate_input(user_input: str) -> str:
+    """
+    Validate and sanitize user input.
+    
+    Args:
+        user_input: Raw user input string
+        
+    Returns:
+        Sanitized input string
+        
+    Raises:
+        ValidationError: If input is invalid or too long
+    """
+    if not user_input or not isinstance(user_input, str):
+        raise ValidationError("Input must be a non-empty string")
+    
+    # Check length
+    if len(user_input) > MAX_INPUT_LENGTH:
+        raise ValidationError(f"Input too long (max {MAX_INPUT_LENGTH} characters)")
+    
+    # Remove potentially dangerous characters
+    sanitized = re.sub(r'[<>"|&`$]', '', user_input.strip())
+    
+    # Check for command injection attempts
+    dangerous_patterns = [
+        r'[;&|`$]',  # Command separators
+        r'\(.*\)',   # Subshells
+        r'\$\{.*\}', # Variable expansion
+        r'<.*>',     # Redirections
+        r'\\',       # Escapes
+    ]
+    
+    for pattern in dangerous_patterns:
+        if re.search(pattern, sanitized):
+            raise ValidationError("Input contains potentially dangerous characters")
+    
+    return sanitized
+
+def validate_command(command: str) -> str:
+    """
+    Validate and sanitize generated command.
+    
+    Args:
+        command: Generated command string
+        
+    Returns:
+        Sanitized command string
+        
+    Raises:
+        SecurityError: If command is blocked or dangerous
+    """
+    if not command or not isinstance(command, str):
+        raise SecurityError("Invalid command")
+    
+    if len(command) > MAX_COMMAND_LENGTH:
+        raise SecurityError(f"Command too long (max {MAX_COMMAND_LENGTH} characters)")
+    
+    # Split command into parts for analysis
     try:
+        parts = shlex.split(command)
+        if not parts:
+            raise SecurityError("Empty command")
+        
+        base_command = parts[0].lower()
+        
+        # Check for blocked commands
+        if base_command in BLOCKED_COMMANDS:
+            raise SecurityError(f"Command '{base_command}' is blocked for security reasons")
+        
+        # Check for dangerous commands
+        if base_command in DANGEROUS_COMMANDS:
+            logger.warning(f"Dangerous command detected: {base_command}")
+        
+        # Check for safe commands (optional whitelist)
+        if base_command not in SAFE_COMMANDS:
+            logger.warning(f"Unknown command: {base_command}")
+        
+        return command.strip()
+        
+    except ValueError as e:
+        raise SecurityError(f"Invalid command syntax: {e}")
+
+def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess:
+    """
+    Securely run a subprocess command with proper validation.
+    
+    Args:
+        command: Command to execute
+        **kwargs: Additional arguments for subprocess.run
+        
+    Returns:
+        CompletedProcess object
+        
+    Raises:
+        SecurityError: If command is unsafe
+    """
+    # Validate command
+    validated_command = validate_command(command)
+    
+    # Use list format instead of shell=True for better security
+    try:
+        cmd_parts = shlex.split(validated_command)
+        return subprocess.run(cmd_parts, **kwargs)
+    except Exception as e:
+        logger.error(f"Subprocess execution failed: {e}")
+        raise SecurityError(f"Command execution failed: {e}")
+
+def load_config() -> Dict[str, Any]:
+    """
+    Load configuration with proper error handling.
+    
+    Returns:
+        Configuration dictionary
+        
+    Raises:
+        SystemExit: If configuration cannot be loaded
+    """
+    try:
+        if not CONFIG_DIR.exists():
+            CONFIG_DIR.mkdir(mode=0o700)  # Secure permissions
+        
+        if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
+            with CONFIG_FILE.open("w") as f:
+                json.dump(DEFAULT_CONFIG, f, indent=2)
+            os.chmod(CONFIG_FILE, 0o600)  # Secure permissions
+        
         with CONFIG_FILE.open("r") as f:
             config = json.load(f)
-    except json.JSONDecodeError:
-        with CONFIG_FILE.open("w") as f:
-            json.dump(DEFAULT_CONFIG, f, indent=2)
-        config = DEFAULT_CONFIG.copy()
-    if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
-        config["api_key"] = os.environ["GOOGLE_API_KEY"]
-    if not config["api_key"]:
-        print(f"{ANSI_RED}Error: No Google API key found. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY.{ANSI_RESET}")
+        
+        # Validate config structure
+        if not isinstance(config, dict):
+            raise ValueError("Invalid config format")
+        
+        # Ensure all required keys exist
+        for key, default_value in DEFAULT_CONFIG.items():
+            if key not in config:
+                config[key] = default_value
+        
+        # Get API key from environment if not in config
+        if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
+            config["api_key"] = os.environ["GOOGLE_API_KEY"]
+        
+        if not config["api_key"]:
+            print(f"{ANSI_RED}Error: No Google API key found. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY.{ANSI_RESET}")
+            sys.exit(1)
+        
+        return config
+        
+    except (json.JSONDecodeError, OSError, ValueError) as e:
+        logger.error(f"Failed to load config: {e}")
+        print(f"{ANSI_RED}Error: Failed to load configuration: {e}{ANSI_RESET}")
         sys.exit(1)
-    return config
 
-def save_config(config):
-    with CONFIG_FILE.open("w") as f:
-        json.dump(config, f, indent=2)
-
-def save_history(user_input, command):
-    history = []
-    if HISTORY_FILE.exists():
-        with HISTORY_FILE.open("r") as f:
-            history = json.load(f)
-    history.append({"input": user_input, "command": command})
-    with HISTORY_FILE.open("w") as f:
-        json.dump(history[-HISTORY_LIMIT:], f, indent=2)
-
-def load_history():
-    if HISTORY_FILE.exists():
-        with HISTORY_FILE.open("r") as f:
-            return json.load(f)
-    return []
-
-def get_history_command(index):
-    history = load_history()
+def save_config(config: Dict[str, Any]) -> None:
+    """
+    Save configuration with proper error handling.
+    
+    Args:
+        config: Configuration dictionary to save
+    """
     try:
-        return history[int(index)]["command"], history[int(index)]["input"]
-    except (IndexError, ValueError):
+        if not CONFIG_DIR.exists():
+            CONFIG_DIR.mkdir(mode=0o700)
+        
+        with CONFIG_FILE.open("w") as f:
+            json.dump(config, f, indent=2)
+        
+        os.chmod(CONFIG_FILE, 0o600)  # Secure permissions
+        
+    except (OSError, TypeError) as e:
+        logger.error(f"Failed to save config: {e}")
+        print(f"{ANSI_RED}Error: Failed to save configuration: {e}{ANSI_RESET}")
+
+def save_history(user_input: str, command: str) -> None:
+    """
+    Save command history with proper validation.
+    
+    Args:
+        user_input: User's natural language input
+        command: Generated command
+    """
+    try:
+        # Validate inputs
+        user_input = validate_input(user_input)
+        command = validate_command(command)
+        
+        history = []
+        if HISTORY_FILE.exists():
+            with HISTORY_FILE.open("r") as f:
+                history = json.load(f)
+        
+        if not isinstance(history, list):
+            history = []
+        
+        history.append({"input": user_input, "command": command})
+        
+        # Limit history size
+        history = history[-HISTORY_LIMIT:]
+        
+        with HISTORY_FILE.open("w") as f:
+            json.dump(history, f, indent=2)
+        
+        os.chmod(HISTORY_FILE, 0o600)  # Secure permissions
+        
+    except Exception as e:
+        logger.error(f"Failed to save history: {e}")
+
+def load_history() -> List[Dict[str, str]]:
+    """
+    Load command history with proper error handling.
+    
+    Returns:
+        List of history entries
+    """
+    try:
+        if HISTORY_FILE.exists():
+            with HISTORY_FILE.open("r") as f:
+                history = json.load(f)
+            
+            if not isinstance(history, list):
+                return []
+            
+            return history
+        return []
+        
+    except Exception as e:
+        logger.error(f"Failed to load history: {e}")
+        return []
+
+def get_history_command(index: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Get command from history by index with validation.
+    
+    Args:
+        index: History index as string
+        
+    Returns:
+        Tuple of (command, user_input) or (None, None) if invalid
+    """
+    try:
+        history = load_history()
+        idx = int(index)
+        
+        if 0 <= idx < len(history):
+            entry = history[idx]
+            return entry.get("command"), entry.get("input")
+        
+        return None, None
+        
+    except (ValueError, IndexError, KeyError):
         return None, None
 
-def get_autocomplete_suggestions():
-    history = load_history()
-    return [entry["input"] for entry in history]
-
-config = load_config()
-genai.configure(api_key=config["api_key"])
-
-def generate_command(user_input, error_context=None, verbose=False):
+def get_autocomplete_suggestions() -> List[str]:
+    """
+    Get autocomplete suggestions from history.
+    
+    Returns:
+        List of user input strings for autocomplete
+    """
     try:
+        history = load_history()
+        return [entry.get("input", "") for entry in history if entry.get("input")]
+    except Exception as e:
+        logger.error(f"Failed to get autocomplete suggestions: {e}")
+        return []
+
+# Load configuration and initialize Gemini
+try:
+    config = load_config()
+    genai.configure(api_key=config["api_key"])
+except Exception as e:
+    logger.error(f"Failed to initialize: {e}")
+    sys.exit(1)
+
+def generate_command(user_input: str, error_context: Optional[str] = None, verbose: bool = False) -> Tuple[str, str]:
+    """
+    Generate a Linux command using Gemini API with proper validation.
+    
+    Args:
+        user_input: Natural language description of the task
+        error_context: Previous error message for correction
+        verbose: Whether to include explanations
+        
+    Returns:
+        Tuple of (command, explanation)
+    """
+    try:
+        # Validate input
+        validated_input = validate_input(user_input)
+        
         model = genai.GenerativeModel(config["model"])
         current_dir = os.getcwd()
-        prompt = f"Generate a single, safe, correct Linux command for a Debian-based system to: {user_input}. Current directory: {current_dir}. Return only the command, no explanations."
+        
+        # Create a secure prompt
+        prompt = f"Generate a single, safe, correct Linux command for a Debian-based system to: {validated_input}. Current directory: {current_dir}. Return only the command, no explanations."
+        
         if error_context:
             prompt += f" Previous command failed with error: '{error_context}'. Suggest a corrected command."
+        
         if verbose:
             prompt += " Additionally, return a brief explanation in the format: [EXPLANATION: ...]"
+        
         response = model.generate_content(prompt)
         text = response.text.strip()
+        
+        # Extract command and explanation
         command = re.sub(r'```bash\n|```|\n\[EXPLANATION:.*', '', text).strip()
         explanation = re.search(r'\[EXPLANATION: (.*?)\]', text)
         explanation = explanation.group(1) if explanation else ""
-        return command if command else f"{ANSI_RED}Error: No valid command generated.{ANSI_RESET}", explanation
+        
+        # Validate generated command
+        if not command:
+            return f"{ANSI_RED}Error: No valid command generated.{ANSI_RESET}", ""
+        
+        validated_command = validate_command(command)
+        return validated_command, explanation
+        
+    except ValidationError as e:
+        logger.error(f"Input validation failed: {e}")
+        return f"{ANSI_RED}Error: Invalid input - {e}{ANSI_RESET}", ""
+    except SecurityError as e:
+        logger.error(f"Security validation failed: {e}")
+        return f"{ANSI_RED}Error: Security violation - {e}{ANSI_RESET}", ""
     except Exception as e:
+        logger.error(f"Command generation failed: {e}")
         return f"{ANSI_RED}Error: Could not generate command: {str(e)}{ANSI_RESET}", ""
 
-def get_error_explanation(error):
+def get_error_explanation(error: str) -> str:
+    """
+    Get explanation for command errors using Gemini API.
+    
+    Args:
+        error: Error message from command execution
+        
+    Returns:
+        Explanation string
+    """
     try:
+        # Validate error input
+        if not error or not isinstance(error, str):
+            return f"{ANSI_RED}Invalid error message.{ANSI_RESET}"
+        
+        if len(error) > MAX_INPUT_LENGTH:
+            error = error[:MAX_INPUT_LENGTH] + "..."
+        
         model = genai.GenerativeModel(config["model"])
         response = model.generate_content(f"Explain this Linux command error briefly: '{error}'")
         return response.text.strip()
-    except Exception:
+        
+    except Exception as e:
+        logger.error(f"Error explanation failed: {e}")
         return f"{ANSI_RED}Unable to explain error.{ANSI_RESET}"
 
-def simulate_typing(command):
+def simulate_typing(command: str) -> None:
+    """
+    Simulate typing effect for command display.
+    
+    Args:
+        command: Command to display
+    """
     print(f"{ANSI_BLUE}Executing command:{ANSI_RESET} ", end="", flush=True)
     for char in command:
         print(char, end="", flush=True)
         time.sleep(0.05)
     print()
 
-def run_command_interactive(command, verbose=False):
-    if command.strip().startswith("cd "):
-        try:
-            new_dir = command.strip().split(" ", 1)[1]
-            os.chdir(os.path.expanduser(new_dir))
-            print(f"{ANSI_GREEN}Changed directory to: {os.getcwd()}{ANSI_RESET}")
-            return True, ""
-        except Exception as e:
-            return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
-
-    simulate_typing(command)
-
+def run_command_interactive(command: str, verbose: bool = False) -> Tuple[bool, str]:
+    """
+    Run command in interactive mode with proper security.
+    
+    Args:
+        command: Command to execute
+        verbose: Whether to show verbose output
+        
+    Returns:
+        Tuple of (success, error_message)
+    """
     try:
-        result = subprocess.run(command, shell=True, text=True, capture_output=True)
+        # Handle cd command specially
+        if command.strip().startswith("cd "):
+            try:
+                new_dir = command.strip().split(" ", 1)[1]
+                os.chdir(os.path.expanduser(new_dir))
+                print(f"{ANSI_GREEN}Changed directory to: {os.getcwd()}{ANSI_RESET}")
+                return True, ""
+            except Exception as e:
+                return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
+
+        simulate_typing(command)
+
+        # Use secure subprocess execution
+        result = secure_subprocess_run(command, text=True, capture_output=True, timeout=30)
+        
         if result.stdout:
             print(f"{ANSI_CYAN}Output:{ANSI_RESET}")
             print(result.stdout.strip())
         if result.stderr:
             print(f"{ANSI_RED}Error:{ANSI_RESET}")
             print(result.stderr.strip())
+        
         return result.returncode == 0, result.stderr.strip()
+        
+    except subprocess.TimeoutExpired:
+        return False, f"{ANSI_RED}Error: Command timed out after 30 seconds{ANSI_RESET}"
+    except SecurityError as e:
+        return False, f"{ANSI_RED}Error: {e}{ANSI_RESET}"
     except Exception as e:
+        logger.error(f"Command execution failed: {e}")
         return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
-def run_command_normal(command, verbose=False):
-    if command.strip().startswith("cd "):
-        try:
-            new_dir = command.strip().split(" ", 1)[1]
-            os.chdir(os.path.expanduser(new_dir))
-            print(f"{ANSI_GREEN}Changed directory to: {os.getcwd()}{ANSI_RESET}")
-            return True, ""
-        except Exception as e:
-            return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
-
-    confirm = input(f"{ANSI_YELLOW}Do you want to execute this command? (y/n): {ANSI_RESET}").strip().lower()
-    if confirm in ['y', 'yes']:
-        simulate_typing(command)
-        try:
-            result = subprocess.run(command, shell=True, text=True, capture_output=True)
-            if result.stdout:
-                print(f"{ANSI_CYAN}Output:{ANSI_RESET}")
-                print(result.stdout.strip())
-            if result.stderr:
-                print(f"{ANSI_RED}Error:{ANSI_RESET}")
-                print(result.stderr.strip())
-            return result.returncode == 0, result.stderr.strip()
-        except Exception as e:
-            return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
-    else:
-        print(f"{ANSI_YELLOW}Command not executed.{ANSI_RESET}")
-        sys.exit(0)
+def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
+    """
+    Run command in normal mode with user confirmation.
+    
+    Args:
+        command: Command to execute
+        verbose: Whether to show verbose output
         
-def show_changes():
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Handle cd command specially
+        if command.strip().startswith("cd "):
+            try:
+                new_dir = command.strip().split(" ", 1)[1]
+                os.chdir(os.path.expanduser(new_dir))
+                print(f"{ANSI_GREEN}Changed directory to: {os.getcwd()}{ANSI_RESET}")
+                return True, ""
+            except Exception as e:
+                return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
+
+        # Check if command is dangerous
+        cmd_parts = shlex.split(command)
+        if cmd_parts and cmd_parts[0].lower() in DANGEROUS_COMMANDS:
+            print(f"{ANSI_YELLOW}Warning: This is a potentially dangerous command!{ANSI_RESET}")
+            confirm = input(f"{ANSI_YELLOW}Are you sure you want to execute this command? (yes/no): {ANSI_RESET}").strip().lower()
+            if confirm not in ['yes', 'y']:
+                print(f"{ANSI_YELLOW}Command not executed.{ANSI_RESET}")
+                sys.exit(0)
+        else:
+            confirm = input(f"{ANSI_YELLOW}Do you want to execute this command? (y/n): {ANSI_RESET}").strip().lower()
+            if confirm not in ['y', 'yes']:
+                print(f"{ANSI_YELLOW}Command not executed.{ANSI_RESET}")
+                sys.exit(0)
+
+        simulate_typing(command)
+        
+        # Use secure subprocess execution
+        result = secure_subprocess_run(command, text=True, capture_output=True, timeout=30)
+        
+        if result.stdout:
+            print(f"{ANSI_CYAN}Output:{ANSI_RESET}")
+            print(result.stdout.strip())
+        if result.stderr:
+            print(f"{ANSI_RED}Error:{ANSI_RESET}")
+            print(result.stderr.strip())
+        
+        return result.returncode == 0, result.stderr.strip()
+        
+    except subprocess.TimeoutExpired:
+        return False, f"{ANSI_RED}Error: Command timed out after 30 seconds{ANSI_RESET}"
+    except SecurityError as e:
+        return False, f"{ANSI_RED}Error: {e}{ANSI_RESET}"
+    except Exception as e:
+        logger.error(f"Command execution failed: {e}")
+        return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
+
+def show_changes() -> None:
+    """
+    Show current directory and contents after command execution.
+    """
     print(f"{ANSI_BLUE}Current Directory: {os.getcwd()}{ANSI_RESET}")
     try:
-        result = subprocess.run("ls -l", shell=True, text=True, capture_output=True)
+        # Use secure subprocess for ls command
+        result = secure_subprocess_run("ls -l", text=True, capture_output=True, timeout=10)
         if result.stdout:
             print(f"{ANSI_CYAN}Directory Contents:{ANSI_RESET}")
             print(result.stdout.strip())
@@ -210,12 +588,29 @@ def show_changes():
             print(f"{ANSI_RED}Error listing directory:{ANSI_RESET}")
             print(result.stderr.strip())
     except Exception as e:
+        logger.error(f"Failed to show directory contents: {e}")
         print(f"{ANSI_RED}Error listing directory: {str(e)}{ANSI_RESET}")
 
-def is_destructive_command(command):
-    return any(cmd in command.lower() for cmd in DESTRUCTIVE_COMMANDS)
+def is_destructive_command(command: str) -> bool:
+    """
+    Check if command is potentially destructive.
+    
+    Args:
+        command: Command to check
+        
+    Returns:
+        True if command is destructive
+    """
+    try:
+        cmd_parts = shlex.split(command)
+        return cmd_parts and cmd_parts[0].lower() in DANGEROUS_COMMANDS
+    except Exception:
+        return False
 
-def print_help():
+def print_help() -> None:
+    """
+    Print detailed help information.
+    """
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
     print(f"{ANSI_MAGENTA}LinAIx: Linux Command Assistant powered by Gemini API{ANSI_RESET}")
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
@@ -235,24 +630,48 @@ def print_help():
     print(f"\n{ANSI_BLUE}Examples:{ANSI_RESET}")
     print(f"  linaix 'list all python files'          # Generates 'ls *.py' and prompts for execution")
     print(f"  linaix --verbose 'create a directory'   # Includes explanation and prompts")
-    print(f"  linaix --interactive                   # Runs natural language AI shell in current terminal")
+    print(f"  linaix --interactive                   # Runs natural language AI shell in new terminal")
     print(f"  linaix --add-alias listpy 'list all python files'  # Adds alias")
     print(f"  linaix listpy                          # Uses alias and prompts")
+    print(f"\n{ANSI_BLUE}Security Features:{ANSI_RESET}")
+    print(f"  • Input validation and sanitization")
+    print(f"  • Command whitelist and blacklist")
+    print(f"  • Secure subprocess execution")
+    print(f"  • Timeout protection (30 seconds)")
+    print(f"  • Dangerous command confirmation")
     print(f"\n{ANSI_BLUE}Setup:{ANSI_RESET}")
     print(f"  1. Run: {ANSI_GREEN}linaix --setup{ANSI_RESET} for interactive setup")
     print(f"  2. Or obtain a Google API key from https://aistudio.google.com/app/apikey")
     print(f"  3. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
 
-def print_centered(text, color=""):
-    width = shutil.get_terminal_size((80, 20)).columns
-    for line in text.splitlines():
-        if line.strip() == "":
-            print()
-        else:
-            print(color + line.center(width) + ANSI_RESET)
+def print_centered(text: str, color: str = "") -> None:
+    """
+    Print text centered in terminal.
+    
+    Args:
+        text: Text to print
+        color: ANSI color code
+    """
+    try:
+        width = shutil.get_terminal_size((80, 20)).columns
+        for line in text.splitlines():
+            if line.strip() == "":
+                print()
+            else:
+                print(color + line.center(width) + ANSI_RESET)
+    except Exception:
+        # Fallback if terminal size cannot be determined
+        for line in text.splitlines():
+            if line.strip() == "":
+                print()
+            else:
+                print(color + line + ANSI_RESET)
 
-def print_linaix_banner():
+def print_linaix_banner() -> None:
+    """
+    Print the LinAIx banner.
+    """
     banner = f"""
 ██╗     ██╗███╗   ██╗ █████╗ ██╗██╗  ██╗
 ██║     ██║████╗  ██║██╔══██╗██║╚██╗██╔╝
@@ -263,9 +682,16 @@ def print_linaix_banner():
 """
     print_centered(banner, ANSI_GREEN + ANSI_BOLD)
 
-def print_intro():
-    width = shutil.get_terminal_size((80, 20)).columns
-    border = "+" + ("-" * (width - 2)) + "+"
+def print_intro() -> None:
+    """
+    Print introduction and usage information.
+    """
+    try:
+        width = shutil.get_terminal_size((80, 20)).columns
+        border = "+" + ("-" * (width - 2)) + "+"
+    except Exception:
+        border = "+" + ("-" * 78) + "+"
+    
     print(ANSI_MAGENTA + border + ANSI_RESET)
     print_centered("Welcome to LinAIx Natural Language Terminal!", ANSI_MAGENTA + ANSI_BOLD)
     print_centered("AI-powered Linux shell: Just describe what you want to do!", ANSI_CYAN)
@@ -283,42 +709,73 @@ def print_intro():
     print_centered("• No raw shell commands.", ANSI_GREEN)
     print_centered("• Destructive actions (like rm) will ask for confirmation.", ANSI_GREEN)
     print_centered("• Have fun!", ANSI_GREEN)
-
     print(ANSI_MAGENTA + border + ANSI_RESET)
 
-def nl_terminal(verbose=False):
+def nl_terminal(verbose: bool = False) -> None:
+    """
+    Run the natural language terminal interface.
+    
+    Args:
+        verbose: Whether to show verbose output
+    """
     print_linaix_banner()
     print_intro()
+    
     while True:
         try:
+            # Get user and host information safely
             user = os.getenv('USER') or os.getenv('USERNAME') or 'user'
-            host = os.uname().nodename if hasattr(os, 'uname') else 'host'
+            
+            try:
+                host = os.uname().nodename if hasattr(os, 'uname') else 'host'
+            except Exception:
+                host = 'host'
+            
             cwd = os.getcwd()
-            short_cwd = os.path.basename(cwd) or '/'
             prompt = f"{ANSI_GREEN}{user}@{host}{ANSI_RESET}:{ANSI_BLUE}{cwd}{ANSI_RESET} $ "
+            
             user_input = input(prompt).strip()
             if not user_input:
                 continue
+                
             if user_input.lower() in ['exit', 'quit']:
                 print(f"{ANSI_GREEN}Goodbye!{ANSI_RESET}")
                 break
-            command, explanation = generate_command(user_input, verbose=verbose)
-            if not command:
+            
+            # Validate input before processing
+            try:
+                validated_input = validate_input(user_input)
+            except ValidationError as e:
+                print(f"{ANSI_RED}Invalid input: {e}{ANSI_RESET}")
+                continue
+            
+            command, explanation = generate_command(validated_input, verbose=verbose)
+            
+            if not command or command.startswith(f"{ANSI_RED}Error:"):
                 print(f"{ANSI_RED}Could not generate a command for your request.{ANSI_RESET}")
                 continue
+            
             print(f"{ANSI_BLUE}Generated Command:{ANSI_RESET} {ANSI_GREEN}{command}{ANSI_RESET}")
             if verbose and explanation:
                 print(f"{ANSI_BLUE}Explanation:{ANSI_RESET} {ANSI_CYAN}{explanation}{ANSI_RESET}")
-            success, error = run_command_interactive(command)
+            
+            success, error = run_command_interactive(command, verbose)
             if success:
                 print(f"{ANSI_GREEN}✓ Success{ANSI_RESET}")
             else:
                 print(f"{ANSI_RED}✗ Error: {error}{ANSI_RESET}")
+                
         except (EOFError, KeyboardInterrupt):
             print(f"\n{ANSI_GREEN}Goodbye!{ANSI_RESET}")
             break
+        except Exception as e:
+            logger.error(f"Unexpected error in terminal: {e}")
+            print(f"{ANSI_RED}Unexpected error: {e}{ANSI_RESET}")
 
-def main():
+def main() -> None:
+    """
+    Main function to handle command line arguments and execute appropriate actions.
+    """
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive natural language mode")
@@ -331,7 +788,12 @@ def main():
     parser.add_argument("--help", action="store_true", help="Show this detailed help")
     parser.add_argument("--set-api-key", type=str, help="Set the Google API key interactively")
     parser.add_argument("--setup", action="store_true", help="Interactive setup for API key and model")
-    args = parser.parse_args()
+    
+    try:
+        args = parser.parse_args()
+    except SystemExit:
+        print_help()
+        return
 
     if args.help:
         print_help()
@@ -376,17 +838,31 @@ def main():
         return
 
     if args.interactive:
-        # Run interactive mode in current terminal
-        nl_terminal(verbose=args.verbose)
+        # Open interactive mode in a new terminal window
+        if create_new_terminal_window():
+            return
+        else:
+            # Fallback to current terminal if new window creation fails
+            nl_terminal(verbose=args.verbose)
         return
 
     user_input = " ".join(args.task) if args.task else ""
     if not user_input:
         print_help()
         sys.exit(1)
+    
+    # Check for aliases
     if config["aliases"].get(user_input):
         user_input = config["aliases"][user_input]
-    command, explanation = generate_command(user_input, verbose=args.verbose)
+    
+    # Validate input
+    try:
+        validated_input = validate_input(user_input)
+    except ValidationError as e:
+        print(f"{ANSI_RED}Invalid input: {e}{ANSI_RESET}")
+        sys.exit(1)
+    
+    command, explanation = generate_command(validated_input, verbose=args.verbose)
     print(f"{ANSI_BLUE}Command:{ANSI_RESET}")
     print(f"{ANSI_GREEN}{command}{ANSI_RESET}")
     if args.verbose and explanation:
@@ -394,11 +870,11 @@ def main():
         print(f"{ANSI_CYAN}{explanation}{ANSI_RESET}")
     print(ANSI_SEPARATOR)
 
-    if "Error" in command:
+    if command.startswith(f"{ANSI_RED}Error:"):
         print(command)
         return
 
-    save_history(user_input, command)
+    save_history(validated_input, command)
     success, error = run_command_normal(command, args.verbose)
     if success:
         print(f"{ANSI_GREEN}Success{ANSI_RESET}")
@@ -410,17 +886,17 @@ def main():
             print(f"{ANSI_BLUE}Error Explanation:{ANSI_RESET}")
             print(f"{ANSI_CYAN}{explanation}{ANSI_RESET}")
         print(f"{ANSI_BLUE}Generating alternative...{ANSI_RESET}")
-        new_command, new_explanation = generate_command(user_input, error, args.verbose)
+        new_command, new_explanation = generate_command(validated_input, error, args.verbose)
         print(f"{ANSI_BLUE}New Command:{ANSI_RESET}")
         print(f"{ANSI_GREEN}{new_command}{ANSI_RESET}")
         if args.verbose and new_explanation:
             print(f"{ANSI_BLUE}Explanation:{ANSI_RESET}")
             print(f"{ANSI_CYAN}{new_explanation}{ANSI_RESET}")
         print(ANSI_SEPARATOR)
-        if "Error" in new_command:
+        if new_command.startswith(f"{ANSI_RED}Error:"):
             print(new_command)
             return
-        save_history(user_input, new_command)
+        save_history(validated_input, new_command)
         success, error = run_command_normal(new_command, args.verbose)
         if success:
             print(f"{ANSI_GREEN}Success{ANSI_RESET}")
@@ -428,111 +904,146 @@ def main():
         else:
             print(f"{ANSI_RED}{error}{ANSI_RESET}")
 
-def set_api_key(api_key=None):
-    """Set the API key interactively or via parameter"""
-    if api_key is None:
-        print(f"{ANSI_CYAN}Setting up Google API Key for LinAIx{ANSI_RESET}")
-        print(f"{ANSI_YELLOW}1. Get your API key from: https://aistudio.google.com/app/apikey{ANSI_RESET}")
-        print(f"{ANSI_YELLOW}2. Enter your API key below:{ANSI_RESET}")
-        api_key = input(f"{ANSI_GREEN}API Key: {ANSI_RESET}").strip()
+def set_api_key(api_key: Optional[str] = None) -> None:
+    """
+    Set the API key interactively or via parameter.
+    
+    Args:
+        api_key: API key to set (if None, prompt user)
+    """
+    try:
+        if api_key is None:
+            print(f"{ANSI_CYAN}Setting up Google API Key for LinAIx{ANSI_RESET}")
+            print(f"{ANSI_YELLOW}1. Get your API key from: https://aistudio.google.com/app/apikey{ANSI_RESET}")
+            print(f"{ANSI_YELLOW}2. Enter your API key below:{ANSI_RESET}")
+            api_key = input(f"{ANSI_GREEN}API Key: {ANSI_RESET}").strip()
+            
+            if not api_key:
+                print(f"{ANSI_RED}No API key provided. Setup cancelled.{ANSI_RESET}")
+                return
         
-        if not api_key:
-            print(f"{ANSI_RED}No API key provided. Setup cancelled.{ANSI_RESET}")
+        # Validate API key format (basic check)
+        if not api_key or len(api_key) < 10:
+            print(f"{ANSI_RED}Invalid API key format.{ANSI_RESET}")
             return
-    
-    # Get model preference
-    print(f"{ANSI_CYAN}Available models:{ANSI_RESET}")
-    print(f"{ANSI_GREEN}1. gemini-1.5-flash (fast, good for most tasks){ANSI_RESET}")
-    print(f"{ANSI_GREEN}2. gemini-1.5-pro (more capable, slower){ANSI_RESET}")
-    print(f"{ANSI_GREEN}3. gemini-pro (legacy model){ANSI_RESET}")
-    
-    model_choice = input(f"{ANSI_YELLOW}Choose model (1-3, default: 1): {ANSI_RESET}").strip()
-    
-    model_map = {
-        "1": "gemini-1.5-flash",
-        "2": "gemini-1.5-pro", 
-        "3": "gemini-pro"
-    }
-    
-    selected_model = model_map.get(model_choice, "gemini-1.5-flash")
-    
-    # Load current config or create new one
-    config = {}
-    if CONFIG_FILE.exists():
+        
+        # Get model preference
+        print(f"{ANSI_CYAN}Available models:{ANSI_RESET}")
+        print(f"{ANSI_GREEN}1. gemini-1.5-flash (fast, good for most tasks){ANSI_RESET}")
+        print(f"{ANSI_GREEN}2. gemini-1.5-pro (more capable, slower){ANSI_RESET}")
+        print(f"{ANSI_GREEN}3. gemini-pro (legacy model){ANSI_RESET}")
+        
+        model_choice = input(f"{ANSI_YELLOW}Choose model (1-3, default: 1): {ANSI_RESET}").strip()
+        
+        model_map = {
+            "1": "gemini-1.5-flash",
+            "2": "gemini-1.5-pro", 
+            "3": "gemini-pro"
+        }
+        
+        selected_model = model_map.get(model_choice, "gemini-1.5-flash")
+        
+        # Load current config or create new one
         try:
-            with CONFIG_FILE.open("r") as f:
-                config = json.load(f)
-        except:
-            config = DEFAULT_CONFIG
-    else:
-        config = DEFAULT_CONFIG
-    
-    # Update config
-    config["api_key"] = api_key
-    config["model"] = selected_model
-    
-    # Save config
-    if not CONFIG_DIR.exists():
-        CONFIG_DIR.mkdir()
-    
-    with CONFIG_FILE.open("w") as f:
-        json.dump(config, f, indent=2)
-    
-    print(f"{ANSI_GREEN}✓ API key and model configured successfully!{ANSI_RESET}")
-    print(f"{ANSI_CYAN}Model: {selected_model}{ANSI_RESET}")
-    print(f"{ANSI_CYAN}Config saved to: {CONFIG_FILE}{ANSI_RESET}")
+            current_config = load_config()
+        except SystemExit:
+            current_config = DEFAULT_CONFIG.copy()
+        
+        # Update config
+        current_config["api_key"] = api_key
+        current_config["model"] = selected_model
+        
+        # Save config
+        save_config(current_config)
+        
+        print(f"{ANSI_GREEN}✓ API key and model configured successfully!{ANSI_RESET}")
+        print(f"{ANSI_CYAN}Model: {selected_model}{ANSI_RESET}")
+        print(f"{ANSI_CYAN}Config saved to: {CONFIG_FILE}{ANSI_RESET}")
+        
+    except Exception as e:
+        logger.error(f"Failed to set API key: {e}")
+        print(f"{ANSI_RED}Error: Failed to set API key: {e}{ANSI_RESET}")
 
-def manage_aliases(args):
-    """Manage aliases for the linaix command"""
-    config = load_config()
+def manage_aliases(args: argparse.Namespace) -> None:
+    """
+    Manage aliases for the linaix command.
     
-    if args.add_alias:
-        name, task = args.add_alias
-        config["aliases"][name] = task
-        save_config(config)
-        print(f"{ANSI_GREEN}✓ Alias '{name}' added for task: '{task}'{ANSI_RESET}")
-    
-    elif args.remove_alias:
-        name = args.remove_alias
-        if name in config["aliases"]:
-            del config["aliases"][name]
-            save_config(config)
-            print(f"{ANSI_GREEN}✓ Alias '{name}' removed{ANSI_RESET}")
-        else:
-            print(f"{ANSI_RED}Alias '{name}' not found{ANSI_RESET}")
-    
-    elif args.list_aliases:
-        if not config["aliases"]:
-            print(f"{ANSI_YELLOW}No aliases defined{ANSI_RESET}")
-        else:
-            print(f"{ANSI_BLUE}Defined Aliases:{ANSI_RESET}")
-            for name, task in config["aliases"].items():
-                print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
+    Args:
+        args: Parsed command line arguments
+    """
+    try:
+        current_config = load_config()
+        
+        if args.add_alias:
+            name, task = args.add_alias
+            # Validate alias name and task
+            if not name or not task:
+                print(f"{ANSI_RED}Alias name and task cannot be empty{ANSI_RESET}")
+                return
+            
+            try:
+                validate_input(task)
+            except ValidationError as e:
+                print(f"{ANSI_RED}Invalid task: {e}{ANSI_RESET}")
+                return
+            
+            current_config["aliases"][name] = task
+            save_config(current_config)
+            print(f"{ANSI_GREEN}✓ Alias '{name}' added for task: '{task}'{ANSI_RESET}")
+        
+        elif args.remove_alias:
+            name = args.remove_alias
+            if name in current_config["aliases"]:
+                del current_config["aliases"][name]
+                save_config(current_config)
+                print(f"{ANSI_GREEN}✓ Alias '{name}' removed{ANSI_RESET}")
+            else:
+                print(f"{ANSI_RED}Alias '{name}' not found{ANSI_RESET}")
+        
+        elif args.list_aliases:
+            if not current_config["aliases"]:
+                print(f"{ANSI_YELLOW}No aliases defined{ANSI_RESET}")
+            else:
+                print(f"{ANSI_BLUE}Defined Aliases:{ANSI_RESET}")
+                for name, task in current_config["aliases"].items():
+                    print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
+                    
+    except Exception as e:
+        logger.error(f"Failed to manage aliases: {e}")
+        print(f"{ANSI_RED}Error: Failed to manage aliases: {e}{ANSI_RESET}")
 
-def create_new_terminal_window():
-    """Create a new terminal window for interactive mode"""
-    script_path = Path(__file__).resolve()
+def create_new_terminal_window() -> bool:
+    """
+    Create a new terminal window for interactive mode.
     
-    # Try different terminal emulators in order of preference
-    terminal_commands = [
-        ["xterm", "-e", "python3", str(script_path), "--interactive"],
-        ["konsole", "-e", "python3", str(script_path), "--interactive"],
-        ["gnome-terminal", "--", "python3", str(script_path), "--interactive"],
-        ["xfce4-terminal", "-e", "python3", str(script_path), "--interactive"],
-        ["mate-terminal", "-e", "python3", str(script_path), "--interactive"]
-    ]
-    
-    for cmd in terminal_commands:
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        script_path = Path(__file__).resolve()
+        
+        # Validate script path
+        if not script_path.exists():
+            logger.error("Script path does not exist")
+            return False
+        
+        # Try to open GNOME terminal
         try:
-            subprocess.run(cmd, check=True)
-            terminal_name = cmd[0]
-            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new {terminal_name} window...{ANSI_RESET}")
+            # Run in background so it doesn't block the current terminal
+            subprocess.Popen(
+                ["gnome-terminal", "--", "python3", str(script_path), "--interactive"], 
+                start_new_session=True
+            )
+            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new GNOME terminal window...{ANSI_RESET}")
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            continue
-    
-    print(f"{ANSI_RED}Could not open new terminal window. Running in current terminal.{ANSI_RESET}")
-    return False
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.warning(f"Could not open GNOME terminal: {e}")
+            print(f"{ANSI_RED}Could not open GNOME terminal. Running in current terminal.{ANSI_RESET}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Failed to create new terminal window: {e}")
+        return False
 
 if __name__ == "__main__":
-    main()
+    main() 
