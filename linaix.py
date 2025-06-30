@@ -1014,35 +1014,80 @@ def manage_aliases(args: argparse.Namespace) -> None:
 
 def create_new_terminal_window() -> bool:
     """
-    Create a new terminal window for interactive mode.
-    
-    Returns:
-        True if successful, False otherwise
+    Create a new terminal window for interactive mode (Linux GNOME only).
+    Returns True if successful, False otherwise.
     """
     try:
         script_path = Path(__file__).resolve()
-        
-        # Validate script path
         if not script_path.exists():
             logger.error("Script path does not exist")
             return False
-        
-        # Try to open GNOME terminal
-        try:
-            # Run in background so it doesn't block the current terminal
-            subprocess.Popen(
-                ["gnome-terminal", "--", "python3", str(script_path), "--interactive"], 
-                start_new_session=True
-            )
-            print(f"{ANSI_GREEN}✓ Opening LinAIx in a new GNOME terminal window...{ANSI_RESET}")
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            logger.warning(f"Could not open GNOME terminal: {e}")
-            print(f"{ANSI_RED}Could not open GNOME terminal. Running in current terminal.{ANSI_RESET}")
-            return False
-            
+        current_dir = os.getcwd()
+        # GNOME terminal methods only
+        terminal_commands = [
+            [
+                "gnome-terminal", 
+                "--", 
+                "bash", 
+                "-c", 
+                f"cd '{current_dir}' && python3 '{script_path}' --interactive; exec bash"
+            ],
+            [
+                "gnome-terminal", 
+                "--working-directory", current_dir,
+                "--", 
+                "python3", 
+                str(script_path), 
+                "--interactive"
+            ],
+            [
+                "gnome-terminal", 
+                "--title=LinAIx Interactive Mode",
+                "--working-directory", current_dir,
+                "--", 
+                "python3", 
+                str(script_path), 
+                "--interactive"
+            ],
+            [
+                "gnome-terminal", 
+                "--", 
+                "env", 
+                f"PWD={current_dir}",
+                "python3", 
+                str(script_path), 
+                "--interactive"
+            ]
+        ]
+        for i, cmd in enumerate(terminal_commands, 1):
+            try:
+                logger.info(f"Trying GNOME terminal method {i}: {' '.join(cmd)}")
+                process = subprocess.Popen(
+                    cmd, 
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                time.sleep(0.5)
+                if process.poll() is None:
+                    print(f"{ANSI_GREEN}✓ Opening LinAIx in a new GNOME terminal window...{ANSI_RESET}")
+                    logger.info(f"Successfully opened GNOME terminal with method {i}")
+                    return True
+                else:
+                    logger.warning(f"GNOME terminal method {i} failed - process exited")
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                logger.warning(f"GNOME terminal method {i} failed: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error with GNOME terminal method {i}: {e}")
+                continue
+        print(f"{ANSI_RED}Could not open GNOME terminal. Running in current terminal.{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}Make sure GNOME terminal is installed and accessible.{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}You can install it with: sudo apt install gnome-terminal{ANSI_RESET}")
+        return False
     except Exception as e:
         logger.error(f"Failed to create new terminal window: {e}")
+        print(f"{ANSI_RED}Error creating new terminal window: {e}{ANSI_RESET}")
         return False
 
 if __name__ == "__main__":
