@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
 LinAIx Natural Language Terminal: AI-powered shell
-A secure, AI-powered tool for generating and executing Linux commands.
-Type what you want to do in plain English. No shell commands allowed!
-All actions are interpreted and executed by AI with security validation.
+
 """
 import sys
 import os
@@ -19,15 +17,12 @@ import google.generativeai as genai
 import shutil
 from typing import Optional, Tuple, Dict, Any, List
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Constants
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
-# ANSI color codes
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
 ANSI_YELLOW = "\033[1;33m"
@@ -37,12 +32,10 @@ ANSI_MAGENTA = "\033[1;35m"
 ANSI_RESET = "\033[0m"
 ANSI_BOLD = "\033[1m"
 
-# Security constants
 MAX_INPUT_LENGTH = 1000
 MAX_COMMAND_LENGTH = 500
 COMMAND_TIMEOUT = 30
 
-# Security: Whitelist of safe commands
 SAFE_COMMANDS = {
     'cd', 'ls', 'pwd', 'mkdir', 'touch', 'cat', 'echo', 'head', 'tail',
     'grep', 'find', 'wc', 'sort', 'uniq', 'cut', 'tr', 'sed', 'awk',
@@ -54,14 +47,12 @@ SAFE_COMMANDS = {
     'node', 'npm', 'npx', 'docker', 'docker-compose'
 }
 
-# Security: Dangerous commands that require extra confirmation
 DANGEROUS_COMMANDS = {
     'rm', 'dd', 'chmod', 'chown', 'mkfs', 'fdisk', 'parted', 'mount',
     'umount', 'shutdown', 'reboot', 'halt', 'poweroff', 'kill', 'killall',
     'pkill', 'systemctl', 'service', 'iptables', 'ufw', 'firewall-cmd'
 }
 
-# Security: Commands that should never be executed
 BLOCKED_COMMANDS = {
     'sudo', 'su', 'doas', 'pkexec', 'gksudo', 'kdesudo', 'xdg-sudo'
 }
@@ -97,20 +88,17 @@ def validate_input(user_input: str) -> str:
     if not user_input or not isinstance(user_input, str):
         raise ValidationError("Input must be a non-empty string")
     
-    # Check length
     if len(user_input) > MAX_INPUT_LENGTH:
         raise ValidationError(f"Input too long (max {MAX_INPUT_LENGTH} characters)")
     
-    # Remove potentially dangerous characters
     sanitized = re.sub(r'[<>"|&`$]', '', user_input.strip())
     
-    # Check for command injection attempts
     dangerous_patterns = [
-        r'[;&|`$]',  # Command separators
-        r'\(.*\)',   # Subshells
-        r'\$\{.*\}', # Variable expansion
-        r'<.*>',     # Redirections
-        r'\\',       # Escapes
+        r'[;&|`$]',  
+        r'\(.*\)',   
+        r'\$\{.*\}', 
+        r'<.*>',     
+        r'\\',       
     ]
     
     for pattern in dangerous_patterns:
@@ -138,23 +126,19 @@ def validate_command(command: str) -> str:
     if len(command) > MAX_COMMAND_LENGTH:
         raise SecurityError(f"Command too long (max {MAX_COMMAND_LENGTH} characters)")
     
-    # Split command into parts for analysis
     try:
         parts = shlex.split(command)
         if not parts:
             raise SecurityError("Empty command")
         
         base_command = parts[0].lower()
-        
-        # Check for blocked commands
+            
         if base_command in BLOCKED_COMMANDS:
             raise SecurityError(f"Command '{base_command}' is blocked for security reasons")
         
-        # Check for dangerous commands
         if base_command in DANGEROUS_COMMANDS:
             logger.warning(f"Dangerous command detected: {base_command}")
         
-        # Check for safe commands (optional whitelist)
         if base_command not in SAFE_COMMANDS:
             logger.warning(f"Unknown command: {base_command}")
         
@@ -177,10 +161,10 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
     Raises:
         SecurityError: If command is unsafe
     """
-    # Validate command
+    
     validated_command = validate_command(command)
     
-    # Use list format instead of shell=True for better security
+    
     try:
         cmd_parts = shlex.split(validated_command)
         return subprocess.run(cmd_parts, **kwargs)
@@ -200,26 +184,26 @@ def load_config() -> Dict[str, Any]:
     """
     try:
         if not CONFIG_DIR.exists():
-            CONFIG_DIR.mkdir(mode=0o700)  # Secure permissions
+            CONFIG_DIR.mkdir(mode=0o700)  
         
         if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
             with CONFIG_FILE.open("w") as f:
                 json.dump(DEFAULT_CONFIG, f, indent=2)
-            os.chmod(CONFIG_FILE, 0o600)  # Secure permissions
+            os.chmod(CONFIG_FILE, 0o600)  
         
         with CONFIG_FILE.open("r") as f:
             config = json.load(f)
         
-        # Validate config structure
+        
         if not isinstance(config, dict):
             raise ValueError("Invalid config format")
         
-        # Ensure all required keys exist
+        
         for key, default_value in DEFAULT_CONFIG.items():
             if key not in config:
                 config[key] = default_value
         
-        # Get API key from environment if not in config
+        
         if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
             config["api_key"] = os.environ["GOOGLE_API_KEY"]
         
@@ -234,7 +218,7 @@ def load_config() -> Dict[str, Any]:
         print(f"{ANSI_RED}Error: Failed to load configuration: {e}{ANSI_RESET}")
         sys.exit(1)
 
-# Load configuration and initialize Gemini
+
 try:
     config = load_config()
     genai.configure(api_key=config["api_key"])
@@ -255,13 +239,13 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         Tuple of (command, explanation)
     """
     try:
-        # Validate input
+        
         validated_input = validate_input(user_input)
         
         model = genai.GenerativeModel(config["model"])
         current_dir = os.getcwd()
         
-        # Create a secure prompt
+        
         prompt = f"Generate a single, safe, correct Linux command for a Debian-based system to: {validated_input}. Current directory: {current_dir}. Return only the command."
         
         if error_context:
@@ -273,12 +257,12 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         response = model.generate_content(prompt)
         text = response.text.strip()
         
-        # Extract command and explanation
+        
         command = re.sub(r'```bash\n|```|\n\[EXPLANATION:.*', '', text).strip()
         explanation = re.search(r'\[EXPLANATION: (.*?)\]', text)
         explanation = explanation.group(1) if explanation else ""
         
-        # Validate generated command
+        
         if not command:
             return None, ""
         
@@ -309,7 +293,7 @@ def run_command(command: str) -> Tuple[bool, str]:
         Tuple of (success, error_message)
     """
     try:
-        # Handle cd command specially
+        
         if command.strip().startswith("cd "):
             try:
                 new_dir = command.strip().split(" ", 1)[1]
@@ -320,7 +304,7 @@ def run_command(command: str) -> Tuple[bool, str]:
                 logger.error(f"Failed to change directory: {e}")
                 return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
-        # Use secure subprocess execution
+        
         result = secure_subprocess_run(command, text=True, capture_output=True, timeout=COMMAND_TIMEOUT)
         
         if result.stdout:
@@ -354,7 +338,7 @@ def print_centered(text: str, color: str = "") -> None:
             else:
                 print(color + line.center(width) + ANSI_RESET)
     except Exception:
-        # Fallback if terminal size cannot be determined
+        
         for line in text.splitlines():
             if line.strip() == "":
                 print()
@@ -416,7 +400,7 @@ def nl_terminal(verbose: bool = False) -> None:
     
     while True:
         try:
-            # Get user and host information safely
+            
             user = os.getenv('USER') or os.getenv('USERNAME') or 'user'
             
             try:
@@ -435,7 +419,7 @@ def nl_terminal(verbose: bool = False) -> None:
                 print(f"{ANSI_GREEN}Goodbye!{ANSI_RESET}")
                 break
             
-            # Validate input before processing
+            
             try:
                 validated_input = validate_input(user_input)
             except ValidationError as e:

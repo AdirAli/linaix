@@ -15,6 +15,9 @@
 
 </div>
 
+[![LinAIx Demo Video](demo_thumbnail.png)](Demo_video.webm)
+
+
 ---
 
 ## 🎯 What is LinAIx?

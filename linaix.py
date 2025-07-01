@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 LinAIx: Linux Command Assistant powered by Gemini API
-A secure, AI-powered tool for generating and executing Linux commands.
 """
 import sys
 import os
@@ -21,16 +20,13 @@ import shutil
 from typing import Optional, Tuple, Dict, Any, List
 import platform
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Constants
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 
-# ANSI color codes
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
 ANSI_YELLOW = "\033[1;33m"
@@ -41,7 +37,6 @@ ANSI_RESET = "\033[0m"
 ANSI_SEPARATOR = "\033[1;34m" + "-" * 40 + "\033[0m"
 ANSI_BOLD = "\033[1m"
 
-# Constants for prompt_toolkit Colors
 PTK_GREEN = "ansigreen"
 PTK_RED = "ansired"
 PTK_YELLOW = "ansiyellow"
@@ -49,7 +44,6 @@ PTK_BLUE = "ansiblue"
 PTK_CYAN = "ansicyan"
 PTK_MAGENTA = "ansimagenta"
 
-# Constants for Style
 STYLE_DICT = {
     'prompt': f'{PTK_GREEN} bold',
     'output': '#ffffff',
@@ -74,14 +68,12 @@ SAFE_COMMANDS = {
     'node', 'npm', 'npx', 'docker', 'docker-compose'
 }
 
-# Security: Dangerous commands that require extra confirmation
 DANGEROUS_COMMANDS = {
     'rm', 'dd', 'chmod', 'chown', 'mkfs', 'fdisk', 'parted', 'mount',
     'umount', 'shutdown', 'reboot', 'halt', 'poweroff', 'kill', 'killall',
     'pkill', 'systemctl', 'service', 'iptables', 'ufw', 'firewall-cmd'
 }
 
-# Security: Commands that should never be executed
 BLOCKED_COMMANDS = {
     'sudo', 'su', 'doas', 'pkexec', 'gksudo', 'kdesudo', 'xdg-sudo'
 }
@@ -121,20 +113,17 @@ def validate_input(user_input: str) -> str:
     if not user_input or not isinstance(user_input, str):
         raise ValidationError("Input must be a non-empty string")
     
-    # Check length
     if len(user_input) > MAX_INPUT_LENGTH:
         raise ValidationError(f"Input too long (max {MAX_INPUT_LENGTH} characters)")
     
-    # Remove potentially dangerous characters
     sanitized = re.sub(r'[<>"|&`$]', '', user_input.strip())
     
-    # Check for command injection attempts
     dangerous_patterns = [
-        r'[;&|`$]',  # Command separators
-        r'\(.*\)',   # Subshells
-        r'\$\{.*\}', # Variable expansion
-        r'<.*>',     # Redirections
-        r'\\',       # Escapes
+        r'[;&|`$]',  
+        r'\(.*\)',   
+        r'\$\{.*\}', 
+        r'<.*>',     
+        r'\\',       
     ]
     
     for pattern in dangerous_patterns:
@@ -162,7 +151,6 @@ def validate_command(command: str) -> str:
     if len(command) > MAX_COMMAND_LENGTH:
         raise SecurityError(f"Command too long (max {MAX_COMMAND_LENGTH} characters)")
     
-    # Split command into parts for analysis
     try:
         parts = shlex.split(command)
         if not parts:
@@ -170,15 +158,12 @@ def validate_command(command: str) -> str:
         
         base_command = parts[0].lower()
         
-        # Check for blocked commands
         if base_command in BLOCKED_COMMANDS:
             raise SecurityError(f"Command '{base_command}' is blocked for security reasons")
         
-        # Check for dangerous commands
         if base_command in DANGEROUS_COMMANDS:
             logger.warning(f"Dangerous command detected: {base_command}")
         
-        # Check for safe commands (optional whitelist)
         if base_command not in SAFE_COMMANDS:
             logger.warning(f"Unknown command: {base_command}")
         
@@ -201,10 +186,8 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
     Raises:
         SecurityError: If command is unsafe
     """
-    # Validate command
     validated_command = validate_command(command)
     
-    # Use list format instead of shell=True for better security
     try:
         cmd_parts = shlex.split(validated_command)
         return subprocess.run(cmd_parts, **kwargs)
@@ -224,26 +207,23 @@ def load_config() -> Dict[str, Any]:
     """
     try:
         if not CONFIG_DIR.exists():
-            CONFIG_DIR.mkdir(mode=0o700)  # Secure permissions
+            CONFIG_DIR.mkdir(mode=0o700)  
         
         if not CONFIG_FILE.exists() or CONFIG_FILE.stat().st_size == 0:
             with CONFIG_FILE.open("w") as f:
                 json.dump(DEFAULT_CONFIG, f, indent=2)
-            os.chmod(CONFIG_FILE, 0o600)  # Secure permissions
+            os.chmod(CONFIG_FILE, 0o600)  
         
         with CONFIG_FILE.open("r") as f:
             config = json.load(f)
         
-        # Validate config structure
         if not isinstance(config, dict):
             raise ValueError("Invalid config format")
         
-        # Ensure all required keys exist
         for key, default_value in DEFAULT_CONFIG.items():
             if key not in config:
                 config[key] = default_value
         
-        # Get API key from environment if not in config
         if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
             config["api_key"] = os.environ["GOOGLE_API_KEY"]
         
@@ -272,7 +252,7 @@ def save_config(config: Dict[str, Any]) -> None:
         with CONFIG_FILE.open("w") as f:
             json.dump(config, f, indent=2)
         
-        os.chmod(CONFIG_FILE, 0o600)  # Secure permissions
+        os.chmod(CONFIG_FILE, 0o600)  
         
     except (OSError, TypeError) as e:
         logger.error(f"Failed to save config: {e}")
@@ -287,7 +267,6 @@ def save_history(user_input: str, command: str) -> None:
         command: Generated command
     """
     try:
-        # Validate inputs
         user_input = validate_input(user_input)
         command = validate_command(command)
         
@@ -301,13 +280,12 @@ def save_history(user_input: str, command: str) -> None:
         
         history.append({"input": user_input, "command": command})
         
-        # Limit history size
         history = history[-HISTORY_LIMIT:]
         
         with HISTORY_FILE.open("w") as f:
             json.dump(history, f, indent=2)
         
-        os.chmod(HISTORY_FILE, 0o600)  # Secure permissions
+        os.chmod(HISTORY_FILE, 0o600)  
         
     except Exception as e:
         logger.error(f"Failed to save history: {e}")
@@ -371,7 +349,6 @@ def get_autocomplete_suggestions() -> List[str]:
         logger.error(f"Failed to get autocomplete suggestions: {e}")
         return []
 
-# Load configuration and initialize Gemini
 try:
     config = load_config()
     genai.configure(api_key=config["api_key"])
@@ -392,13 +369,11 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         Tuple of (command, explanation)
     """
     try:
-        # Validate input
         validated_input = validate_input(user_input)
         
         model = genai.GenerativeModel(config["model"])
         current_dir = os.getcwd()
         
-        # Create a secure prompt
         prompt = f"Generate a single, safe, correct Linux command for a Debian-based system to: {validated_input}. Current directory: {current_dir}. Return only the command, no explanations."
         
         if error_context:
@@ -410,12 +385,10 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         response = model.generate_content(prompt)
         text = response.text.strip()
         
-        # Extract command and explanation
         command = re.sub(r'```bash\n|```|\n\[EXPLANATION:.*', '', text).strip()
         explanation = re.search(r'\[EXPLANATION: (.*?)\]', text)
         explanation = explanation.group(1) if explanation else ""
         
-        # Validate generated command
         if not command:
             return f"{ANSI_RED}Error: No valid command generated.{ANSI_RESET}", ""
         
@@ -443,7 +416,6 @@ def get_error_explanation(error: str) -> str:
         Explanation string
     """
     try:
-        # Validate error input
         if not error or not isinstance(error, str):
             return f"{ANSI_RED}Invalid error message.{ANSI_RESET}"
         
@@ -483,7 +455,6 @@ def run_command_interactive(command: str, verbose: bool = False) -> Tuple[bool, 
         Tuple of (success, error_message)
     """
     try:
-        # Handle cd command specially
         if command.strip().startswith("cd "):
             try:
                 new_dir = command.strip().split(" ", 1)[1]
@@ -495,7 +466,6 @@ def run_command_interactive(command: str, verbose: bool = False) -> Tuple[bool, 
 
         simulate_typing(command)
 
-        # Use secure subprocess execution
         result = secure_subprocess_run(command, text=True, capture_output=True, timeout=30)
         
         if result.stdout:
@@ -527,7 +497,6 @@ def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
         Tuple of (success, error_message)
     """
     try:
-        # Handle cd command specially
         if command.strip().startswith("cd "):
             try:
                 new_dir = command.strip().split(" ", 1)[1]
@@ -537,7 +506,6 @@ def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
             except Exception as e:
                 return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
-        # Check if command is dangerous
         cmd_parts = shlex.split(command)
         if cmd_parts and cmd_parts[0].lower() in DANGEROUS_COMMANDS:
             print(f"{ANSI_YELLOW}Warning: This is a potentially dangerous command!{ANSI_RESET}")
@@ -553,7 +521,6 @@ def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
 
         simulate_typing(command)
         
-        # Use secure subprocess execution
         result = secure_subprocess_run(command, text=True, capture_output=True, timeout=30)
         
         if result.stdout:
@@ -579,7 +546,6 @@ def show_changes() -> None:
     """
     print(f"{ANSI_BLUE}Current Directory: {os.getcwd()}{ANSI_RESET}")
     try:
-        # Use secure subprocess for ls command
         result = secure_subprocess_run("ls -l", text=True, capture_output=True, timeout=10)
         if result.stdout:
             print(f"{ANSI_CYAN}Directory Contents:{ANSI_RESET}")
@@ -661,7 +627,6 @@ def print_centered(text: str, color: str = "") -> None:
             else:
                 print(color + line.center(width) + ANSI_RESET)
     except Exception:
-        # Fallback if terminal size cannot be determined
         for line in text.splitlines():
             if line.strip() == "":
                 print()
@@ -723,7 +688,6 @@ def nl_terminal(verbose: bool = False) -> None:
     
     while True:
         try:
-            # Get user and host information safely
             user = os.getenv('USER') or os.getenv('USERNAME') or 'user'
             
             try:
@@ -742,7 +706,6 @@ def nl_terminal(verbose: bool = False) -> None:
                 print(f"{ANSI_GREEN}Goodbye!{ANSI_RESET}")
                 break
             
-            # Validate input before processing
             try:
                 validated_input = validate_input(user_input)
             except ValidationError as e:
@@ -838,11 +801,9 @@ def main() -> None:
         return
 
     if args.interactive:
-        # Open interactive mode in a new terminal window
         if create_new_terminal_window():
             return
         else:
-            # Fallback to current terminal if new window creation fails
             nl_terminal(verbose=args.verbose)
         return
 
@@ -851,11 +812,9 @@ def main() -> None:
         print_help()
         sys.exit(1)
     
-    # Check for aliases
     if config["aliases"].get(user_input):
         user_input = config["aliases"][user_input]
     
-    # Validate input
     try:
         validated_input = validate_input(user_input)
     except ValidationError as e:
@@ -922,12 +881,11 @@ def set_api_key(api_key: Optional[str] = None) -> None:
                 print(f"{ANSI_RED}No API key provided. Setup cancelled.{ANSI_RESET}")
                 return
         
-        # Validate API key format (basic check)
         if not api_key or len(api_key) < 10:
             print(f"{ANSI_RED}Invalid API key format.{ANSI_RESET}")
             return
         
-        # Get model preference
+        
         print(f"{ANSI_CYAN}Available models:{ANSI_RESET}")
         print(f"{ANSI_GREEN}1. gemini-1.5-flash (fast, good for most tasks){ANSI_RESET}")
         print(f"{ANSI_GREEN}2. gemini-1.5-pro (more capable, slower){ANSI_RESET}")
@@ -943,17 +901,14 @@ def set_api_key(api_key: Optional[str] = None) -> None:
         
         selected_model = model_map.get(model_choice, "gemini-1.5-flash")
         
-        # Load current config or create new one
         try:
             current_config = load_config()
         except SystemExit:
             current_config = DEFAULT_CONFIG.copy()
         
-        # Update config
         current_config["api_key"] = api_key
         current_config["model"] = selected_model
         
-        # Save config
         save_config(current_config)
         
         print(f"{ANSI_GREEN}✓ API key and model configured successfully!{ANSI_RESET}")
@@ -976,7 +931,6 @@ def manage_aliases(args: argparse.Namespace) -> None:
         
         if args.add_alias:
             name, task = args.add_alias
-            # Validate alias name and task
             if not name or not task:
                 print(f"{ANSI_RED}Alias name and task cannot be empty{ANSI_RESET}")
                 return
@@ -1018,7 +972,6 @@ def create_new_terminal_window() -> bool:
     Returns True if successful, False otherwise.
     """
     try:
-        # Always launch linaix_nl_terminal.py
         script_path = Path(__file__).parent / "linaix_nl_terminal.py"
         if not script_path.exists():
             logger.error("linaix_nl_terminal.py does not exist")
