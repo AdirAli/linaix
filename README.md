@@ -15,9 +15,12 @@
 
 </div>
 
-[![LinAIx Demo Video](demo_thumbnail.png)](Demo_video.webm)
+<div align='center'>
 
+[![LinAIx Demo Video](demo_thumbnail.png)](linaix_demo.webm)
 
+*Recording showing Linaix generating different linux command based on user natural language input*
+</div>
 ---
 
 ## 🎯 What is LinAIx?
