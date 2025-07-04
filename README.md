@@ -362,7 +362,7 @@ We welcome contributions! Here's how you can help:
 
 ### **Development Setup**
 ```bash
-git clone https://github.com/yourusername/linaix.git
+git clone https://github.com/AdirAli/linaix.git
 cd linaix
 pip install -r requirements.txt
 ```
