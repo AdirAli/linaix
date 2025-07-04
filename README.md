@@ -17,7 +17,7 @@
 
 <div align='center'>
 
-[![LinAIx Demo Video](demo_thumbnail.png)](linaix_demo.gif)
+[![LinAIx Demo Video]](linaix_demo.gif)
 
 *Recording showing Linaix generating different linux command based on user natural language input*
 </div>
