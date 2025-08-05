@@ -1,0 +1,12 @@
+google-generativeai>=0.3.0
+prompt-toolkit>=3.0.0
+
+[:python_version < "3.4"]
+pathlib2>=2.3.0
+
+[dev]
+pytest>=6.0
+pytest-cov>=2.0
+black>=21.0
+flake8>=3.8
+mypy>=0.800

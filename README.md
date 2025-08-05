@@ -96,42 +96,24 @@ linaix listpy
 - **Linux Distribution** (Ubuntu, Debian, Fedora, etc.)
 - **Google Gemini API Key** ([Get one here](https://aistudio.google.com/app/apikey))
 
-### Step 1: Clone the Repository
+### Install LinAIx
+
+ LinAIx using pip:
+
 ```bash
-git clone https://github.com/AdirAli/linaix.git
-cd linaix
+pip install linaix
 ```
 
-### Step 2: Install Python Dependencies
+After installation, you can run LinAIx directly:
 ```bash
-pip install -r requirements.txt
+linaix --help
 ```
 
-### Step 3: Install Linux Dependencies
-
-#### For Ubuntu/Debian:
-```bash
-sudo apt update
-sudo apt install gnome-terminal python3-pip
-```
-
-#### For Fedora/RHEL/CentOS:
-```bash
-sudo dnf install gnome-terminal python3-pip
-# or for older versions:
-sudo yum install gnome-terminal python3-pip
-```
-
-#### For Arch Linux:
-```bash
-sudo pacman -S gnome-terminal python-pip
-```
-
-### Step 4: Configure Your API Key
+### Configure Your API Key
 
 **Option A: Interactive Setup (Recommended)**
 ```bash
-python3 linaix.py --setup
+linaix --setup
 ```
 This will guide you through setting up your API key and choosing your preferred Gemini model interactively.
 
@@ -151,22 +133,6 @@ nano ~/.linaix/config.json
 - `gemini-1.5-flash` (fast, good for most tasks) - **Default**
 - `gemini-1.5-pro` (more capable, slower)
 - `gemini-pro` (legacy model)
-
-### Step 5: Set Up Global Access (Optional but Recommended)
-
-Make the `linaix` command available globally so you can run it from any directory:
-
-**Create a Symbolic Link**
-```bash
-# Make the script executable
-chmod +x linaix.py
-
-# Create a symbolic link in /usr/local/bin (requires sudo)
-sudo ln -s $(pwd)/linaix.py /usr/local/bin/linaix
-
-# Now you can run linaix from anywhere
-linaix --interactive
-```
 
 ---
 
@@ -195,7 +161,7 @@ linaix --add-alias cleanup "remove all temporary files"
 Run LinAIx in interactive mode for a natural language terminal experience:
 
 ```bash
-python3 linaix.py --interactive
+linaix --interactive
 ```
 
 This will run the LinAIx natural language terminal directly in your current terminal window.
@@ -338,11 +304,11 @@ linaix --set-api-key "your-api-key-here"
 
 #### **"Permission denied"**
 ```bash
-# Make the script executable
-chmod +x linaix.py
+# Try reinstalling the package
+pip install --force-reinstall linaix
 
-# Or run with python explicitly
-python3 linaix.py --interactive
+# Or check if the command is in your PATH
+which linaix
 ```
 
 ---
@@ -364,8 +330,10 @@ We welcome contributions! Here's how you can help:
 ```bash
 git clone https://github.com/AdirAli/linaix.git
 cd linaix
-pip install -r requirements.txt
+pip install -e .
 ```
+
+**Note**: For development and contributing, you can install from source using the above commands. For regular usage, use `pip install linaix`.
 
 ### **Code Style**
 - Follow PEP 8 guidelines
