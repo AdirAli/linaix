@@ -4,8 +4,6 @@ Version: 0.1.0
 Summary: A Linux terminal interface with natural language processing capabilities
 Home-page: https://github.com/AdirAli/linaix
 Author: Adir Ali Yerima
-Author-email: Adir Ali Yerima <your.email@example.com>
-Maintainer-email: Adir Ali Yerima <your.email@example.com>
 License: MIT
 Project-URL: Homepage, https://github.com/AdirAli/linaix
 Project-URL: Repository, https://github.com/AdirAli/linaix

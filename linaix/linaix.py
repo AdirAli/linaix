@@ -56,7 +56,6 @@ STYLE_DICT = {
 }
 STYLE = Style.from_dict(STYLE_DICT)
 
-# Security: Whitelist of safe commands
 SAFE_COMMANDS = {
     'cd', 'ls', 'pwd', 'mkdir', 'touch', 'cat', 'echo', 'head', 'tail',
     'grep', 'find', 'wc', 'sort', 'uniq', 'cut', 'tr', 'sed', 'awk',
@@ -90,26 +89,13 @@ DEFAULT_CONFIG = {
 }
 
 class SecurityError(Exception):
-    """Custom exception for security violations."""
     pass
 
 class ValidationError(Exception):
-    """Custom exception for validation errors."""
     pass
 
 def validate_input(user_input: str) -> str:
-    """
-    Validate and sanitize user input.
     
-    Args:
-        user_input: Raw user input string
-        
-    Returns:
-        Sanitized input string
-        
-    Raises:
-        ValidationError: If input is invalid or too long
-    """
     if not user_input or not isinstance(user_input, str):
         raise ValidationError("Input must be a non-empty string")
     
@@ -133,18 +119,7 @@ def validate_input(user_input: str) -> str:
     return sanitized
 
 def validate_command(command: str) -> str:
-    """
-    Validate and sanitize generated command.
     
-    Args:
-        command: Generated command string
-        
-    Returns:
-        Sanitized command string
-        
-    Raises:
-        SecurityError: If command is blocked or dangerous
-    """
     if not command or not isinstance(command, str):
         raise SecurityError("Invalid command")
     
@@ -173,19 +148,6 @@ def validate_command(command: str) -> str:
         raise SecurityError(f"Invalid command syntax: {e}")
 
 def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess:
-    """
-    Securely run a subprocess command with proper validation.
-    
-    Args:
-        command: Command to execute
-        **kwargs: Additional arguments for subprocess.run
-        
-    Returns:
-        CompletedProcess object
-        
-    Raises:
-        SecurityError: If command is unsafe
-    """
     validated_command = validate_command(command)
     
     try:
@@ -196,15 +158,6 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
         raise SecurityError(f"Command execution failed: {e}")
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load configuration with proper error handling.
-    
-    Returns:
-        Configuration dictionary
-        
-    Raises:
-        SystemExit: If configuration cannot be loaded
-    """
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)  
@@ -259,13 +212,7 @@ def save_config(config: Dict[str, Any]) -> None:
         print(f"{ANSI_RED}Error: Failed to save configuration: {e}{ANSI_RESET}")
 
 def save_history(user_input: str, command: str) -> None:
-    """
-    Save command history with proper validation.
-    
-    Args:
-        user_input: User's natural language input
-        command: Generated command
-    """
+   
     try:
         user_input = validate_input(user_input)
         command = validate_command(command)
@@ -291,12 +238,7 @@ def save_history(user_input: str, command: str) -> None:
         logger.error(f"Failed to save history: {e}")
 
 def load_history() -> List[Dict[str, str]]:
-    """
-    Load command history with proper error handling.
-    
-    Returns:
-        List of history entries
-    """
+   
     try:
         if HISTORY_FILE.exists():
             with HISTORY_FILE.open("r") as f:
@@ -313,15 +255,7 @@ def load_history() -> List[Dict[str, str]]:
         return []
 
 def get_history_command(index: str) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Get command from history by index with validation.
     
-    Args:
-        index: History index as string
-        
-    Returns:
-        Tuple of (command, user_input) or (None, None) if invalid
-    """
     try:
         history = load_history()
         idx = int(index)
@@ -357,17 +291,7 @@ except Exception as e:
     sys.exit(1)
 
 def generate_command(user_input: str, error_context: Optional[str] = None, verbose: bool = False) -> Tuple[str, str]:
-    """
-    Generate a Linux command using Gemini API with proper validation.
     
-    Args:
-        user_input: Natural language description of the task
-        error_context: Previous error message for correction
-        verbose: Whether to include explanations
-        
-    Returns:
-        Tuple of (command, explanation)
-    """
     try:
         validated_input = validate_input(user_input)
         
@@ -406,15 +330,7 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         return f"{ANSI_RED}Error: Could not generate command: {str(e)}{ANSI_RESET}", ""
 
 def get_error_explanation(error: str) -> str:
-    """
-    Get explanation for command errors using Gemini API.
     
-    Args:
-        error: Error message from command execution
-        
-    Returns:
-        Explanation string
-    """
     try:
         if not error or not isinstance(error, str):
             return f"{ANSI_RED}Invalid error message.{ANSI_RESET}"
@@ -431,12 +347,7 @@ def get_error_explanation(error: str) -> str:
         return f"{ANSI_RED}Unable to explain error.{ANSI_RESET}"
 
 def simulate_typing(command: str) -> None:
-    """
-    Simulate typing effect for command display.
     
-    Args:
-        command: Command to display
-    """
     print(f"{ANSI_BLUE}Executing command:{ANSI_RESET} ", end="", flush=True)
     for char in command:
         print(char, end="", flush=True)
@@ -444,16 +355,6 @@ def simulate_typing(command: str) -> None:
     print()
 
 def run_command_interactive(command: str, verbose: bool = False) -> Tuple[bool, str]:
-    """
-    Run command in interactive mode with proper security.
-    
-    Args:
-        command: Command to execute
-        verbose: Whether to show verbose output
-        
-    Returns:
-        Tuple of (success, error_message)
-    """
     try:
         if command.strip().startswith("cd "):
             try:
@@ -486,16 +387,6 @@ def run_command_interactive(command: str, verbose: bool = False) -> Tuple[bool, 
         return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
 def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
-    """
-    Run command in normal mode with user confirmation.
-    
-    Args:
-        command: Command to execute
-        verbose: Whether to show verbose output
-        
-    Returns:
-        Tuple of (success, error_message)
-    """
     try:
         if command.strip().startswith("cd "):
             try:
@@ -558,15 +449,6 @@ def show_changes() -> None:
         print(f"{ANSI_RED}Error listing directory: {str(e)}{ANSI_RESET}")
 
 def is_destructive_command(command: str) -> bool:
-    """
-    Check if command is potentially destructive.
-    
-    Args:
-        command: Command to check
-        
-    Returns:
-        True if command is destructive
-    """
     try:
         cmd_parts = shlex.split(command)
         return cmd_parts and cmd_parts[0].lower() in DANGEROUS_COMMANDS
@@ -574,9 +456,7 @@ def is_destructive_command(command: str) -> bool:
         return False
 
 def print_help() -> None:
-    """
-    Print detailed help information.
-    """
+   
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
     print(f"{ANSI_MAGENTA}LinAIx: Linux Command Assistant powered by Gemini API{ANSI_RESET}")
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
@@ -612,13 +492,7 @@ def print_help() -> None:
     print(f"{ANSI_MAGENTA}{'-' * 60}{ANSI_RESET}")
 
 def print_centered(text: str, color: str = "") -> None:
-    """
-    Print text centered in terminal.
     
-    Args:
-        text: Text to print
-        color: ANSI color code
-    """
     try:
         width = shutil.get_terminal_size((80, 20)).columns
         for line in text.splitlines():
@@ -634,9 +508,6 @@ def print_centered(text: str, color: str = "") -> None:
                 print(color + line + ANSI_RESET)
 
 def print_linaix_banner() -> None:
-    """
-    Print the LinAIx banner.
-    """
     banner = f"""
 ██╗     ██╗███╗   ██╗ █████╗ ██╗██╗  ██╗
 ██║     ██║████╗  ██║██╔══██╗██║╚██╗██╔╝
@@ -648,9 +519,6 @@ def print_linaix_banner() -> None:
     print_centered(banner, ANSI_GREEN + ANSI_BOLD)
 
 def print_intro() -> None:
-    """
-    Print introduction and usage information.
-    """
     try:
         width = shutil.get_terminal_size((80, 20)).columns
         border = "+" + ("-" * (width - 2)) + "+"
@@ -677,12 +545,6 @@ def print_intro() -> None:
     print(ANSI_MAGENTA + border + ANSI_RESET)
 
 def nl_terminal(verbose: bool = False) -> None:
-    """
-    Run the natural language terminal interface.
-    
-    Args:
-        verbose: Whether to show verbose output
-    """
     print_linaix_banner()
     print_intro()
     
@@ -736,9 +598,7 @@ def nl_terminal(verbose: bool = False) -> None:
             print(f"{ANSI_RED}Unexpected error: {e}{ANSI_RESET}")
 
 def main() -> None:
-    """
-    Main function to handle command line arguments and execute appropriate actions.
-    """
+    
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive natural language mode")
@@ -864,12 +724,7 @@ def main() -> None:
             print(f"{ANSI_RED}{error}{ANSI_RESET}")
 
 def set_api_key(api_key: Optional[str] = None) -> None:
-    """
-    Set the API key interactively or via parameter.
     
-    Args:
-        api_key: API key to set (if None, prompt user)
-    """
     try:
         if api_key is None:
             print(f"{ANSI_CYAN}Setting up Google API Key for LinAIx{ANSI_RESET}")
@@ -920,12 +775,7 @@ def set_api_key(api_key: Optional[str] = None) -> None:
         print(f"{ANSI_RED}Error: Failed to set API key: {e}{ANSI_RESET}")
 
 def manage_aliases(args: argparse.Namespace) -> None:
-    """
-    Manage aliases for the linaix command.
-    
-    Args:
-        args: Parsed command line arguments
-    """
+   
     try:
         current_config = load_config()
         
@@ -967,10 +817,7 @@ def manage_aliases(args: argparse.Namespace) -> None:
         print(f"{ANSI_RED}Error: Failed to manage aliases: {e}{ANSI_RESET}")
 
 def create_new_terminal_window() -> bool:
-    """
-    Create a new terminal window for interactive mode (Linux GNOME only), launching linaix_nl_terminal.py.
-    Returns True if successful, False otherwise.
-    """
+    
     try:
         script_path = Path(__file__).parent / "linaix_nl_terminal.py"
         if not script_path.exists():

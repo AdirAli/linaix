@@ -4,10 +4,10 @@ Thank you for considering contributing to LinAIx! We welcome contributions from 
 
 ## How to Contribute
 1. **Fork the Repository**
-   - Fork the repo on GitHub (https://github.com/yourusername/linaix).
+   - Fork the repo on GitHub (https://github.com/AdirAli/linaix).
 2. **Clone Your Fork**
    ```bash
-   git clone https://github.com/yourusername/linaix.git
+   git clone https://github.com/AdirAli/linaix.git
    cd linaix
    ```
 3. **Create a Branch**

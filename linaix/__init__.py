@@ -7,7 +7,6 @@ with their Linux system using natural language commands.
 
 __version__ = "0.1.0"
 __author__ = "Adir Ali Yerima"
-__email__ = "your.email@example.com"
 
 from .linaix import main
 

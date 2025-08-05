@@ -65,26 +65,13 @@ DEFAULT_CONFIG = {
 }
 
 class SecurityError(Exception):
-    """Custom exception for security violations."""
     pass
 
 class ValidationError(Exception):
-    """Custom exception for validation errors."""
     pass
 
 def validate_input(user_input: str) -> str:
-    """
-    Validate and sanitize user input.
     
-    Args:
-        user_input: Raw user input string
-        
-    Returns:
-        Sanitized input string
-        
-    Raises:
-        ValidationError: If input is invalid or too long
-    """
     if not user_input or not isinstance(user_input, str):
         raise ValidationError("Input must be a non-empty string")
     
@@ -108,18 +95,7 @@ def validate_input(user_input: str) -> str:
     return sanitized
 
 def validate_command(command: str) -> str:
-    """
-    Validate and sanitize generated command.
     
-    Args:
-        command: Generated command string
-        
-    Returns:
-        Sanitized command string
-        
-    Raises:
-        SecurityError: If command is blocked or dangerous
-    """
     if not command or not isinstance(command, str):
         raise SecurityError("Invalid command")
     
@@ -148,19 +124,7 @@ def validate_command(command: str) -> str:
         raise SecurityError(f"Invalid command syntax: {e}")
 
 def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess:
-    """
-    Securely run a subprocess command with proper validation.
-    
-    Args:
-        command: Command to execute
-        **kwargs: Additional arguments for subprocess.run
-        
-    Returns:
-        CompletedProcess object
-        
-    Raises:
-        SecurityError: If command is unsafe
-    """
+   
     
     validated_command = validate_command(command)
     
@@ -173,15 +137,7 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
         raise SecurityError(f"Command execution failed: {e}")
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load configuration with proper error handling and security.
     
-    Returns:
-        Configuration dictionary
-        
-    Raises:
-        SystemExit: If configuration cannot be loaded
-    """
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)  
@@ -227,17 +183,7 @@ except Exception as e:
     sys.exit(1)
 
 def generate_command(user_input: str, error_context: Optional[str] = None, verbose: bool = False) -> Tuple[Optional[str], str]:
-    """
-    Generate a Linux command using Gemini API with proper validation.
     
-    Args:
-        user_input: Natural language description of the task
-        error_context: Previous error message for correction
-        verbose: Whether to include explanations
-        
-    Returns:
-        Tuple of (command, explanation)
-    """
     try:
         
         validated_input = validate_input(user_input)
@@ -283,15 +229,7 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         return None, ""
 
 def run_command(command: str) -> Tuple[bool, str]:
-    """
-    Run command with proper security validation.
     
-    Args:
-        command: Command to execute
-        
-    Returns:
-        Tuple of (success, error_message)
-    """
     try:
         
         if command.strip().startswith("cd "):
@@ -323,13 +261,7 @@ def run_command(command: str) -> Tuple[bool, str]:
         return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
 def print_centered(text: str, color: str = "") -> None:
-    """
-    Print text centered in terminal.
-    
-    Args:
-        text: Text to print
-        color: ANSI color code
-    """
+   
     try:
         width = shutil.get_terminal_size((80, 20)).columns
         for line in text.splitlines():
@@ -360,9 +292,7 @@ def print_linaix_banner() -> None:
     print_centered(banner, ANSI_GREEN + ANSI_BOLD)
 
 def print_intro() -> None:
-    """
-    Print introduction and usage information.
-    """
+
     try:
         width = shutil.get_terminal_size((80, 20)).columns
         border = "+" + ("-" * (width - 2)) + "+"
@@ -389,12 +319,6 @@ def print_intro() -> None:
     print(ANSI_MAGENTA + border + ANSI_RESET)
 
 def nl_terminal(verbose: bool = False) -> None:
-    """
-    Run the natural language terminal interface.
-    
-    Args:
-        verbose: Whether to show verbose output
-    """
     print_linaix_banner()
     print_intro()
     
@@ -450,12 +374,7 @@ def nl_terminal(verbose: bool = False) -> None:
             print(f"{ANSI_RED}Unexpected error: {e}{ANSI_RESET}")
 
 def parse_args() -> argparse.Namespace:
-    """
-    Parse command line arguments.
     
-    Returns:
-        Parsed arguments namespace
-    """
     parser = argparse.ArgumentParser(description="LinAIx Natural Language Terminal")
     parser.add_argument("--verbose", action="store_true", help="Show explanations for generated commands")
     return parser.parse_args()
