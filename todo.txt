@@ -1,0 +1,5 @@
+fully test the current version for bugs
+work on support of different linux distros ✓
+build support for window and apple cmd terminal (could require rebranding)
+upload the documention on pypi
+Logic that would support other ai api 

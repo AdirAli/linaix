@@ -94,6 +94,59 @@ class SecurityError(Exception):
 class ValidationError(Exception):
     pass
 
+def detect_linux_distribution() -> str:
+    """
+    Detect the Linux distribution and return distribution information.
+    
+    Returns:
+        String containing distribution name and version information
+    """
+    try:
+        # Try /etc/os-release first (most modern distributions)
+        if os.path.exists('/etc/os-release'):
+            with open('/etc/os-release', 'r') as f:
+                os_release = f.read()
+            
+            # Extract distribution name and version
+            distro_name = None
+            distro_version = None
+            
+            for line in os_release.split('\n'):
+                if line.startswith('PRETTY_NAME='):
+                    distro_name = line.split('=', 1)[1].strip().strip('"')
+                    break
+                elif line.startswith('NAME='):
+                    distro_name = line.split('=', 1)[1].strip().strip('"')
+                elif line.startswith('VERSION='):
+                    distro_version = line.split('=', 1)[1].strip().strip('"')
+            
+            if distro_name:
+                if distro_version and distro_version not in distro_name:
+                    return f"{distro_name} {distro_version}"
+                return distro_name
+        
+        # Fallback to /etc/issue
+        if os.path.exists('/etc/issue'):
+            with open('/etc/issue', 'r') as f:
+                issue_content = f.read().strip()
+                if issue_content:
+                    return issue_content.split('\n')[0].strip()
+        
+        # Fallback to uname
+        try:
+            result = subprocess.run(['uname', '-a'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+        
+        # Final fallback
+        return "Linux (unknown distribution)"
+        
+    except Exception as e:
+        logger.warning(f"Failed to detect Linux distribution: {e}")
+        return "Linux (unknown distribution)"
+
 def validate_input(user_input: str) -> str:
     
     if not user_input or not isinstance(user_input, str):
@@ -297,8 +350,9 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
         
         model = genai.GenerativeModel(config["model"])
         current_dir = os.getcwd()
+        distro_info = detect_linux_distribution()
         
-        prompt = f"Generate a single, safe, correct Linux command for a Debian-based system to: {validated_input}. Current directory: {current_dir}. Return only the command, no explanations."
+        prompt = f"Generate a single, safe, correct Linux command for {distro_info} to: {validated_input}. Current directory: {current_dir}. Return only the command, no explanations."
         
         if error_context:
             prompt += f" Previous command failed with error: '{error_context}'. Suggest a corrected command."

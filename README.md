@@ -11,7 +11,7 @@
 
 > **Improve your Linux experience with natural language commands powered by Google Gemini AI**
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
+[Features](#-features) • [Linux Distribution Support](#-linux-distribution-support) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
 
 </div>
 
@@ -88,12 +88,77 @@ linaix listpy
 
 ---
 
+## 🐧 Linux Distribution Support
+
+LinAIx automatically detects your Linux distribution and generates command based on your specific system. 
+
+#### **Supported Linux Distributions**
+
+<table>
+<tr>
+<td align="center">
+<a href="https://ubuntu.com/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Logo-ubuntu_cof-orange-hex.svg/120px-Logo-ubuntu_cof-orange-hex.svg.png" width="80" height="80" alt="Ubuntu"/>
+<br><b>Ubuntu</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.debian.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Debian-OpenLogo.svg/120px-Debian-OpenLogo.svg.png" width="80" height="80" alt="Debian"/>
+<br><b>Debian</b>
+</a>
+</td>
+<td align="center">
+<a href="https://getfedora.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Fedora_icon_%282021%29.svg/120px-Fedora_icon_%282021%29.svg.png" width="80" height="80" alt="Fedora"/>
+<br><b>Fedora</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.archlinux.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Archlinux-icon-crystal-64.svg/120px-Archlinux-icon-crystal-64.svg.png" width="80" height="80" alt="Arch Linux"/>
+<br><b>Arch Linux</b>
+</a>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="https://www.centos.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/CentOS_logo.svg/120px-CentOS_logo.svg.png" width="80" height="80" alt="CentOS"/>
+<br><b>CentOS</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Red_Hat_logo.svg/120px-Red_Hat_logo.svg.png" width="80" height="80" alt="Red Hat"/>
+<br><b>Red Hat</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.opensuse.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/OpenSUSE_Logo.svg/120px-OpenSUSE_Logo.svg.png" width="80" height="80" alt="openSUSE"/>
+<br><b>openSUSE</b>
+</a>
+</td>
+<td align="center">
+<a href="https://linuxmint.com/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Logo_Linux_Mint.png/120px-Logo_Linux_Mint.png" width="80" height="80" alt="Linux Mint"/>
+<br><b>Linux Mint</b>
+</a>
+</td>
+</tr>
+</table>
+
+*LinAIx works with all major Linux distributions and automatically adapts to your system*
+
+</div>
+
 ## 🚀 Installation
 
 ### Prerequisites
 
 - **Python 3.8+**
-- **Linux Distribution** (Ubuntu, Debian, Fedora, etc.)
+- **Linux Distribution** (Ubuntu, Debian, Fedora, Arch Linux, CentOS, Red Hat, openSUSE, Linux Mint, etc.)
 - **Google Gemini API Key** ([Get one here](https://aistudio.google.com/app/apikey))
 
 ### Install LinAIx
@@ -142,6 +207,7 @@ nano ~/.linaix/config.json
 ```bash
 linaix "list all files in the current directory"
 ```
+*LinAIx automatically detects your Linux distribution and optimizes commands for your system*
 
 ### 2. **Launch Interactive Mode**
 ```bash
