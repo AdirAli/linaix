@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-LinAIx: Linux Command Assistant powered by Gemini API
-"""
+
 import sys
 import os
 import google.generativeai as genai
@@ -88,6 +86,8 @@ DEFAULT_CONFIG = {
     "aliases": {}
 }
 
+config = None
+
 class SecurityError(Exception):
     pass
 
@@ -95,19 +95,12 @@ class ValidationError(Exception):
     pass
 
 def detect_linux_distribution() -> str:
-    """
-    Detect the Linux distribution and return distribution information.
     
-    Returns:
-        String containing distribution name and version information
-    """
     try:
-        # Try /etc/os-release first (most modern distributions)
         if os.path.exists('/etc/os-release'):
             with open('/etc/os-release', 'r') as f:
                 os_release = f.read()
             
-            # Extract distribution name and version
             distro_name = None
             distro_version = None
             
@@ -125,14 +118,12 @@ def detect_linux_distribution() -> str:
                     return f"{distro_name} {distro_version}"
                 return distro_name
         
-        # Fallback to /etc/issue
         if os.path.exists('/etc/issue'):
             with open('/etc/issue', 'r') as f:
                 issue_content = f.read().strip()
                 if issue_content:
                     return issue_content.split('\n')[0].strip()
         
-        # Fallback to uname
         try:
             result = subprocess.run(['uname', '-a'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
@@ -140,7 +131,6 @@ def detect_linux_distribution() -> str:
         except Exception:
             pass
         
-        # Final fallback
         return "Linux (unknown distribution)"
         
     except Exception as e:
@@ -211,6 +201,7 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
         raise SecurityError(f"Command execution failed: {e}")
 
 def load_config() -> Dict[str, Any]:
+    
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)  
@@ -233,10 +224,6 @@ def load_config() -> Dict[str, Any]:
         if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
             config["api_key"] = os.environ["GOOGLE_API_KEY"]
         
-        if not config["api_key"]:
-            print(f"{ANSI_RED}Error: No Google API key found. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY.{ANSI_RESET}")
-            sys.exit(1)
-        
         return config
         
     except (json.JSONDecodeError, OSError, ValueError) as e:
@@ -244,13 +231,24 @@ def load_config() -> Dict[str, Any]:
         print(f"{ANSI_RED}Error: Failed to load configuration: {e}{ANSI_RESET}")
         sys.exit(1)
 
-def save_config(config: Dict[str, Any]) -> None:
-    """
-    Save configuration with proper error handling.
+def validate_api_key() -> None:
+   
+    global config
+    if config is None:
+        config = load_config()
     
-    Args:
-        config: Configuration dictionary to save
-    """
+    if not config["api_key"]:
+        print(f"{ANSI_RED}Error: No Google API key found.{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}To set up your API key:{ANSI_RESET}")
+        print(f"  1. Run: {ANSI_GREEN}linaix --setup{ANSI_RESET} for interactive setup")
+        print(f"  2. Or run: {ANSI_GREEN}linaix --set-api-key{ANSI_RESET} to set it directly")
+        print(f"  3. Or obtain a Google API key from https://aistudio.google.com/app/apikey")
+        print(f"  4. Then set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
+        print(f"\n{ANSI_BLUE}For more help, run: {ANSI_GREEN}linaix --help{ANSI_RESET}")
+        sys.exit(1)
+
+def save_config(config: Dict[str, Any]) -> None:
+    
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)
@@ -323,12 +321,7 @@ def get_history_command(index: str) -> Tuple[Optional[str], Optional[str]]:
         return None, None
 
 def get_autocomplete_suggestions() -> List[str]:
-    """
-    Get autocomplete suggestions from history.
-    
-    Returns:
-        List of user input strings for autocomplete
-    """
+   
     try:
         history = load_history()
         return [entry.get("input", "") for entry in history if entry.get("input")]
@@ -346,6 +339,9 @@ except Exception as e:
 def generate_command(user_input: str, error_context: Optional[str] = None, verbose: bool = False) -> Tuple[str, str]:
     
     try:
+        # Validate API key before attempting to use it
+        validate_api_key()
+        
         validated_input = validate_input(user_input)
         
         model = genai.GenerativeModel(config["model"])
@@ -386,6 +382,8 @@ def generate_command(user_input: str, error_context: Optional[str] = None, verbo
 def get_error_explanation(error: str) -> str:
     
     try:
+        validate_api_key()
+        
         if not error or not isinstance(error, str):
             return f"{ANSI_RED}Invalid error message.{ANSI_RESET}"
         
@@ -486,9 +484,7 @@ def run_command_normal(command: str, verbose: bool = False) -> Tuple[bool, str]:
         return False, f"{ANSI_RED}Error: {str(e)}{ANSI_RESET}"
 
 def show_changes() -> None:
-    """
-    Show current directory and contents after command execution.
-    """
+    
     print(f"{ANSI_BLUE}Current Directory: {os.getcwd()}{ANSI_RESET}")
     try:
         result = secure_subprocess_run("ls -l", text=True, capture_output=True, timeout=10)
@@ -652,6 +648,7 @@ def nl_terminal(verbose: bool = False) -> None:
             print(f"{ANSI_RED}Unexpected error: {e}{ANSI_RESET}")
 
 def main() -> None:
+    global config
     
     parser = argparse.ArgumentParser(description="Linux Command Assistant", add_help=False)
     parser.add_argument("task", nargs="*", help="Task to generate command for")
@@ -726,6 +723,9 @@ def main() -> None:
         print_help()
         sys.exit(1)
     
+    if config is None:
+        config = load_config()
+    
     if config["aliases"].get(user_input):
         user_input = config["aliases"][user_input]
     
@@ -778,6 +778,7 @@ def main() -> None:
             print(f"{ANSI_RED}{error}{ANSI_RESET}")
 
 def set_api_key(api_key: Optional[str] = None) -> None:
+    global config
     
     try:
         if api_key is None:
@@ -810,15 +811,13 @@ def set_api_key(api_key: Optional[str] = None) -> None:
         
         selected_model = model_map.get(model_choice, "gemini-1.5-flash")
         
-        try:
-            current_config = load_config()
-        except SystemExit:
-            current_config = DEFAULT_CONFIG.copy()
+        if config is None:
+            config = load_config()
         
-        current_config["api_key"] = api_key
-        current_config["model"] = selected_model
+        config["api_key"] = api_key
+        config["model"] = selected_model
         
-        save_config(current_config)
+        save_config(config)
         
         print(f"{ANSI_GREEN}✓ API key and model configured successfully!{ANSI_RESET}")
         print(f"{ANSI_CYAN}Model: {selected_model}{ANSI_RESET}")
@@ -829,9 +828,11 @@ def set_api_key(api_key: Optional[str] = None) -> None:
         print(f"{ANSI_RED}Error: Failed to set API key: {e}{ANSI_RESET}")
 
 def manage_aliases(args: argparse.Namespace) -> None:
+    global config
    
     try:
-        current_config = load_config()
+        if config is None:
+            config = load_config()
         
         if args.add_alias:
             name, task = args.add_alias
@@ -845,25 +846,25 @@ def manage_aliases(args: argparse.Namespace) -> None:
                 print(f"{ANSI_RED}Invalid task: {e}{ANSI_RESET}")
                 return
             
-            current_config["aliases"][name] = task
-            save_config(current_config)
+            config["aliases"][name] = task
+            save_config(config)
             print(f"{ANSI_GREEN}✓ Alias '{name}' added for task: '{task}'{ANSI_RESET}")
         
         elif args.remove_alias:
             name = args.remove_alias
-            if name in current_config["aliases"]:
-                del current_config["aliases"][name]
-                save_config(current_config)
+            if name in config["aliases"]:
+                del config["aliases"][name]
+                save_config(config)
                 print(f"{ANSI_GREEN}✓ Alias '{name}' removed{ANSI_RESET}")
             else:
                 print(f"{ANSI_RED}Alias '{name}' not found{ANSI_RESET}")
         
         elif args.list_aliases:
-            if not current_config["aliases"]:
+            if not config["aliases"]:
                 print(f"{ANSI_YELLOW}No aliases defined{ANSI_RESET}")
             else:
                 print(f"{ANSI_BLUE}Defined Aliases:{ANSI_RESET}")
-                for name, task in current_config["aliases"].items():
+                for name, task in config["aliases"].items():
                     print(f"{ANSI_GREEN}{name}{ANSI_RESET}: {ANSI_CYAN}{task}{ANSI_RESET}")
                     
     except Exception as e:

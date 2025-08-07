@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-LinAIx Natural Language Terminal: AI-powered shell
 
-"""
 import sys
 import os
 import re
@@ -64,6 +61,8 @@ DEFAULT_CONFIG = {
     "aliases": {}
 }
 
+config = None
+
 class SecurityError(Exception):
     pass
 
@@ -71,19 +70,12 @@ class ValidationError(Exception):
     pass
 
 def detect_linux_distribution() -> str:
-    """
-    Detect the Linux distribution and return distribution information.
     
-    Returns:
-        String containing distribution name and version information
-    """
     try:
-        # Try /etc/os-release first (most modern distributions)
         if os.path.exists('/etc/os-release'):
             with open('/etc/os-release', 'r') as f:
                 os_release = f.read()
             
-            # Extract distribution name and version
             distro_name = None
             distro_version = None
             
@@ -101,14 +93,12 @@ def detect_linux_distribution() -> str:
                     return f"{distro_name} {distro_version}"
                 return distro_name
         
-        # Fallback to /etc/issue
         if os.path.exists('/etc/issue'):
             with open('/etc/issue', 'r') as f:
                 issue_content = f.read().strip()
                 if issue_content:
                     return issue_content.split('\n')[0].strip()
         
-        # Fallback to uname
         try:
             result = subprocess.run(['uname', '-a'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
@@ -116,7 +106,6 @@ def detect_linux_distribution() -> str:
         except Exception:
             pass
         
-        # Final fallback
         return "Linux (unknown distribution)"
         
     except Exception as e:
@@ -190,7 +179,7 @@ def secure_subprocess_run(command: str, **kwargs) -> subprocess.CompletedProcess
         raise SecurityError(f"Command execution failed: {e}")
 
 def load_config() -> Dict[str, Any]:
-    
+   
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)  
@@ -216,10 +205,6 @@ def load_config() -> Dict[str, Any]:
         if not config["api_key"] and "GOOGLE_API_KEY" in os.environ:
             config["api_key"] = os.environ["GOOGLE_API_KEY"]
         
-        if not config["api_key"]:
-            print(f"{ANSI_RED}Error: No Google API key found. Set it in {CONFIG_FILE} or export GOOGLE_API_KEY.{ANSI_RESET}")
-            sys.exit(1)
-        
         return config
         
     except (json.JSONDecodeError, OSError, ValueError) as e:
@@ -227,17 +212,32 @@ def load_config() -> Dict[str, Any]:
         print(f"{ANSI_RED}Error: Failed to load configuration: {e}{ANSI_RESET}")
         sys.exit(1)
 
+def validate_api_key() -> None:
+    
+    global config
+    if config is None:
+        config = load_config()
+    
+    if not config["api_key"]:
+        print(f"{ANSI_RED}Error: No Google API key found.{ANSI_RESET}")
+        print(f"{ANSI_YELLOW}To set up your API key:{ANSI_RESET}")
+        print(f"  1. Run: {ANSI_GREEN}linaix --setup{ANSI_RESET} for interactive setup")
+        print(f"  2. Or run: {ANSI_GREEN}linaix --set-api-key{ANSI_RESET} to set it directly")
+        print(f"  3. Or obtain a Google API key from https://aistudio.google.com/app/apikey")
+        print(f"  4. Then set it in {CONFIG_FILE} or export GOOGLE_API_KEY='your-api-key'")
+        print(f"\n{ANSI_BLUE}For more help, run: {ANSI_GREEN}linaix --help{ANSI_RESET}")
+        sys.exit(1)
 
-try:
-    config = load_config()
-    genai.configure(api_key=config["api_key"])
-except Exception as e:
-    logger.error(f"Failed to initialize: {e}")
-    sys.exit(1)
+
 
 def generate_command(user_input: str, error_context: Optional[str] = None, verbose: bool = False) -> Tuple[Optional[str], str]:
+    global config
     
     try:
+        validate_api_key()
+        
+        if not genai.configure():
+            genai.configure(api_key=config["api_key"])
         
         validated_input = validate_input(user_input)
         

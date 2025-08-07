@@ -1,9 +1,10 @@
 Metadata-Version: 2.4
 Name: linaix
-Version: 0.1.0
+Version: 0.1.2
 Summary: A Linux terminal interface with natural language processing capabilities
 Home-page: https://github.com/AdirAli/linaix
 Author: Adir Ali Yerima
+Maintainer: Adir Ali Yerima
 License: MIT
 Project-URL: Homepage, https://github.com/AdirAli/linaix
 Project-URL: Repository, https://github.com/AdirAli/linaix
@@ -32,7 +33,6 @@ Requires-Dist: pytest-cov>=2.0; extra == "dev"
 Requires-Dist: black>=21.0; extra == "dev"
 Requires-Dist: flake8>=3.8; extra == "dev"
 Requires-Dist: mypy>=0.800; extra == "dev"
-Dynamic: author
 Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-python
@@ -50,7 +50,7 @@ Dynamic: requires-python
 
 > **Improve your Linux experience with natural language commands powered by Google Gemini AI**
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
+[Features](#-features) • [Linux Distribution Support](#-linux-distribution-support) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Configuration](#-configuration) • [Contributing](#-contributing)
 
 </div>
 
@@ -127,50 +127,97 @@ linaix listpy
 
 ---
 
+## 🐧 Linux Distribution Support
+
+LinAIx automatically detects your Linux distribution and generates command based on your specific system. 
+
+#### **Supported Linux Distributions**
+
+<table>
+<tr>
+<td align="center">
+<a href="https://ubuntu.com/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Logo-ubuntu_cof-orange-hex.svg/120px-Logo-ubuntu_cof-orange-hex.svg.png" width="80" height="80" alt="Ubuntu"/>
+<br><b>Ubuntu</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.debian.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Debian-OpenLogo.svg/120px-Debian-OpenLogo.svg.png" width="80" height="80" alt="Debian"/>
+<br><b>Debian</b>
+</a>
+</td>
+<td align="center">
+<a href="https://getfedora.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Fedora_icon_%282021%29.svg/120px-Fedora_icon_%282021%29.svg.png" width="80" height="80" alt="Fedora"/>
+<br><b>Fedora</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.archlinux.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Archlinux-icon-crystal-64.svg/120px-Archlinux-icon-crystal-64.svg.png" width="80" height="80" alt="Arch Linux"/>
+<br><b>Arch Linux</b>
+</a>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="https://www.centos.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/CentOS_logo.svg/120px-CentOS_logo.svg.png" width="80" height="80" alt="CentOS"/>
+<br><b>CentOS</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Red_Hat_logo.svg/120px-Red_Hat_logo.svg.png" width="80" height="80" alt="Red Hat"/>
+<br><b>Red Hat</b>
+</a>
+</td>
+<td align="center">
+<a href="https://www.opensuse.org/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/OpenSUSE_Logo.svg/120px-OpenSUSE_Logo.svg.png" width="80" height="80" alt="openSUSE"/>
+<br><b>openSUSE</b>
+</a>
+</td>
+<td align="center">
+<a href="https://linuxmint.com/">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Logo_Linux_Mint.png/120px-Logo_Linux_Mint.png" width="80" height="80" alt="Linux Mint"/>
+<br><b>Linux Mint</b>
+</a>
+</td>
+</tr>
+</table>
+
+*LinAIx works with all major Linux distributions and automatically adapts to your system*
+
+</div>
+
 ## 🚀 Installation
 
 ### Prerequisites
 
 - **Python 3.8+**
-- **Linux Distribution** (Ubuntu, Debian, Fedora, etc.)
+- **Linux Distribution** (Ubuntu, Debian, Fedora, Arch Linux, CentOS, Red Hat, openSUSE, Linux Mint, etc.)
 - **Google Gemini API Key** ([Get one here](https://aistudio.google.com/app/apikey))
 
-### Step 1: Clone the Repository
+### Install LinAIx
+
+ LinAIx using pip:
+
 ```bash
-git clone https://github.com/AdirAli/linaix.git
-cd linaix
+pip install linaix
 ```
 
-### Step 2: Install Python Dependencies
+After installation, you can run LinAIx directly:
 ```bash
-pip install -r requirements.txt
+linaix --help
 ```
 
-### Step 3: Install Linux Dependencies
-
-#### For Ubuntu/Debian:
-```bash
-sudo apt update
-sudo apt install gnome-terminal python3-pip
-```
-
-#### For Fedora/RHEL/CentOS:
-```bash
-sudo dnf install gnome-terminal python3-pip
-# or for older versions:
-sudo yum install gnome-terminal python3-pip
-```
-
-#### For Arch Linux:
-```bash
-sudo pacman -S gnome-terminal python-pip
-```
-
-### Step 4: Configure Your API Key
+### Configure Your API Key
 
 **Option A: Interactive Setup (Recommended)**
 ```bash
-python3 linaix.py --setup
+linaix --setup
 ```
 This will guide you through setting up your API key and choosing your preferred Gemini model interactively.
 
@@ -191,22 +238,6 @@ nano ~/.linaix/config.json
 - `gemini-1.5-pro` (more capable, slower)
 - `gemini-pro` (legacy model)
 
-### Step 5: Set Up Global Access (Optional but Recommended)
-
-Make the `linaix` command available globally so you can run it from any directory:
-
-**Create a Symbolic Link**
-```bash
-# Make the script executable
-chmod +x linaix.py
-
-# Create a symbolic link in /usr/local/bin (requires sudo)
-sudo ln -s $(pwd)/linaix.py /usr/local/bin/linaix
-
-# Now you can run linaix from anywhere
-linaix --interactive
-```
-
 ---
 
 ## 🎮 Quick Start
@@ -215,6 +246,7 @@ linaix --interactive
 ```bash
 linaix "list all files in the current directory"
 ```
+*LinAIx automatically detects your Linux distribution and optimizes commands for your system*
 
 ### 2. **Launch Interactive Mode**
 ```bash
@@ -234,7 +266,7 @@ linaix --add-alias cleanup "remove all temporary files"
 Run LinAIx in interactive mode for a natural language terminal experience:
 
 ```bash
-python3 linaix.py --interactive
+linaix --interactive
 ```
 
 This will run the LinAIx natural language terminal directly in your current terminal window.
@@ -377,11 +409,11 @@ linaix --set-api-key "your-api-key-here"
 
 #### **"Permission denied"**
 ```bash
-# Make the script executable
-chmod +x linaix.py
+# Try reinstalling the package
+pip install --force-reinstall linaix
 
-# Or run with python explicitly
-python3 linaix.py --interactive
+# Or check if the command is in your PATH
+which linaix
 ```
 
 ---
@@ -403,8 +435,10 @@ We welcome contributions! Here's how you can help:
 ```bash
 git clone https://github.com/AdirAli/linaix.git
 cd linaix
-pip install -r requirements.txt
+pip install -e .
 ```
+
+**Note**: For development and contributing, you can install from source using the above commands. For regular usage, use `pip install linaix`.
 
 ### **Code Style**
 - Follow PEP 8 guidelines

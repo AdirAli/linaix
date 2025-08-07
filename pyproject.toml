@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linaix"
-version = "0.1.0"
+version = "0.1.2"
 description = "A Linux terminal interface with natural language processing capabilities"
 readme = "README.md"
 license = {text = "MIT"}
