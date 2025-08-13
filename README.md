@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux-orange.svg)](https://www.linux.org/)
+[![PyPI Downloads](https://static.pepy.tech/badge/linaix)](https://pepy.tech/projects/linaix)
 [![AI](https://img.shields.io/badge/AI-Gemini-purple.svg)](https://aistudio.google.com/)
 
 > **Improve your Linux experience with natural language commands powered by Google Gemini AI**
