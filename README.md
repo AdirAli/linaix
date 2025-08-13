@@ -417,10 +417,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made wit for the Linux community**
+**Made for the Linux community**
 
-[![GitHub stars](https://img.shields.io/github/stars/AdirAli/linaix?style=social)](https://github.com/yourusername/linaix)
-[![GitHub forks](https://img.shields.io/github/forks/AdirAli/linaix?style=social)](https://github.com/yourusername/linaix)
-[![GitHub issues](https://img.shields.io/github/issues/AdirAli/linaix)](https://github.com/yourusername/linaix/issues)
+[![GitHub stars](https://img.shields.io/github/stars/AdirAli/linaix?style=social)](https://github.com/AdirAli/linaix)
+[![GitHub forks](https://img.shields.io/github/forks/AdirAli/linaix?style=social)](https://github.com/AdirAli/linaix)
+[![GitHub issues](https://img.shields.io/github/issues/AdirAli/linaix)](https://github.com/AdirAli/linaix/issues)
 
 </div>
