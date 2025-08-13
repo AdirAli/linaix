@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="linaix",
-    version="0.1.2",
+    version="0.1.3",
     author="Adir Ali Yerima",
     description="A Linux terminal interface with natural language processing capabilities",
     long_description=long_description,
