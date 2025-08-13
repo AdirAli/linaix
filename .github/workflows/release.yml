@@ -48,6 +48,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
+        verbose: true
 
   publish-to-pypi:
     name: >-
@@ -62,7 +63,7 @@ jobs:
 
     permissions:
       id-token: write  
-      
+
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v4
