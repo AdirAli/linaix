@@ -1,103 +1,96 @@
-<div align="center">
-
-# LinAIx
 # LinAIx
 
-Simple, safe, cross-platform command generation. Describe what you want; LinAIx outputs one OS-appropriate shell command and can run it after confirmation.
+> Simple, safe, cross-platform command generation from natural language
 
-## Install
+Describe what you want in plain English — LinAIx generates the appropriate shell command for your OS and runs it after confirmation.
+
+---
+
+## 🚀 Installation
 
 ```bash
 pip install linaix
-# or from source
-pip install -e .
 ```
 
-## Setup
+## ⚙️ Setup
 
-Choose a provider and set an API key:
+Choose a provider and configure your API key:
 
 ```bash
-# Google (Gemini)
-linaix --set-google-key YOUR_GOOGLE_API_KEY
-# OpenAI (ChatGPT)
-linaix --set-openai-key YOUR_OPENAI_API_KEY
+# Google Gemini
+linaix --set-google-key YOUR_API_KEY
 
-# Optional: environment variables
-export GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
-export GEMINI_API_KEY=YOUR_GOOGLE_API_KEY
-export OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+# OpenAI ChatGPT
+linaix --set-openai-key YOUR_API_KEY
 ```
 
-## Use
-
+Or use environment variables:
 ```bash
-# Generate and run (with confirmation)
-linaix "list all python files"
-
-# Preview only
-linaix --dry-run "create a directory named backup"
-
-# Skip confirmation
-linaix --yes "show disk usage"
-
-# Pick provider/model (model is required)
-linaix --provider google --model gemini-1.5-pro "task"
-linaix --provider openai --model gpt-4o-mini "task"
-
-# Choose shell (auto = detect current shell)
-linaix --shell auto "task"
-linaix --shell bash "task"
-linaix --shell zsh "task"
-linaix --shell powershell "task"
-linaix --shell cmd "task"
-
-# Timeout (seconds)
-linaix --timeout 60 "task"
+export GOOGLE_API_KEY=your_key
+export OPENAI_API_KEY=your_key
 ```
 
-## Safety
+## 📖 Usage
 
-- Single command only; no pipes, redirects, or subshells
-- Confirmation before execution (use `--yes` to skip)
-- Blocks dangerous commands (rm, dd, chown, shutdown, etc.)
-- Warns on suspicious patterns (e.g., `rm -rf /`)
+**Basic usage** (requires confirmation):
+```bash
+linaix --provider google --model gemini-1.5-flash "list all python files"
+```
 
-## Config
+**Quick examples**:
+```bash
+# Preview without running
+linaix --provider google --model gemini-1.5-flash --dry-run "create backup directory"
 
-Config is stored at `~/.linaix/config.json`:
+# Skip confirmation prompt
+linaix --provider openai --model gpt-4o-mini --yes "show disk usage"
+
+# Set timeout
+linaix --provider google --model gemini-1.5-flash --timeout 60 "find large files"
+
+# Specify shell (auto-detects by default)
+linaix --provider google --model gemini-1.5-flash --shell powershell "list processes"
+```
+
+**Available options**:
+- `--provider` — `google` or `openai` (default: `google`)
+- `--model` — Model name (required, e.g., `gemini-1.5-flash`, `gpt-4o-mini`)
+- `--shell` — `auto`, `bash`, `zsh`, `powershell`, `cmd` (default: `auto`)
+- `--dry-run` — Show command without executing
+- `--yes` — Skip confirmation prompt
+- `--timeout` — Command timeout in seconds (default: 30)
+
+## 🔒 Safety Features
+
+- ✅ Single command only (no pipes, redirects, or chaining)
+- ✅ Confirmation required before execution (unless `--yes`)
+- ✅ Blocks dangerous commands (`rm`, `dd`, `shutdown`, etc.)
+- ✅ Detects suspicious patterns (`rm -rf /`, fork bombs, etc.)
+- ✅ Input validation and sanitization
+
+## 🛠️ Configuration
+
+Config file: `~/.linaix/config.json`
 
 ```json
 {
   "provider": "google",
-  "google_api_key": "",
-  "openai_api_key": "",
+  "google_api_key": "your_key_here",
+  "openai_api_key": ""
 }
 ```
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-- "No API key" → set with `--set-google-key` or `--set-openai-key`, or export `GOOGLE_API_KEY` / `OPENAI_API_KEY`.
-- "Permission denied" → reinstall `pip install --force-reinstall linaix` or check PATH.
+| Issue | Solution |
+|-------|----------|
+| "No API key" error | Run `linaix --set-google-key YOUR_KEY` or set environment variable |
+| "Permission denied" | Check PATH or reinstall: `pip install --force-reinstall linaix` |
+| Command not found | Add Python Scripts to PATH (Windows) or restart terminal |
 
-## License
+## 📝 License
 
 MIT
-cd linaix
-pip install -e .
-```
-
-**Note**: For development and contributing, you can install from source using the above commands. For regular usage, use `pip install linaix`.
-
-### **Code Style**
-- Follow PEP 8 guidelines
-- Add type hints where appropriate
-- Include docstrings for new functions
-- Write tests for new features
-
----
-
-##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
