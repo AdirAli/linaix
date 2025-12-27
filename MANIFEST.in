@@ -1,0 +1,11 @@
+include README.md
+include requirements.txt
+include license
+include *.png
+include *.gif
+include CONTRIBUTING.md
+recursive-include linaix *.py
+recursive-include linaix *.txt
+recursive-include linaix *.md
+recursive-include linaix *.png
+recursive-include linaix *.gif 

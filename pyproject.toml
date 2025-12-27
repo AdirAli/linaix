@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linaix"
+version = "0.1.3"
+description = "Cross-platform command generator from natural language (Linux/macOS/Windows)"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Adir Ali Yerima"}
+]
+maintainers = [
+    {name = "Adir Ali Yerima"}
+]
+keywords = ["terminal", "linux", "nlp", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "google-genai>=1.0.0",
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=21.0",
+    "flake8>=3.8",
+    "mypy>=0.800",
+]
+
+[project.urls]
+Homepage = "https://github.com/AdirAli/linaix"
+Repository = "https://github.com/AdirAli/linaix"
+Documentation = "https://github.com/AdirAli/linaix#readme"
+"Bug Tracker" = "https://github.com/AdirAli/linaix/issues"
+
+[project.scripts]
+linaix = "linaix.linaix:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["linaix*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md", "*.png", "*.gif"] 
