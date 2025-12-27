@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linaix"
-version = "0.1.3"
+version = "0.1.4"
 description = "Cross-platform command generator from natural language (Linux/macOS/Windows)"
 readme = "README.md"
 license = {text = "MIT"}

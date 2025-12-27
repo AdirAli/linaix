@@ -103,8 +103,7 @@ def load_config() -> Dict[str, Any]:
             if key not in data:
                 data[key] = default_value
 
-        # Populate API keys from environment, if present
-        # Prefer GOOGLE_API_KEY, but accept GEMINI_API_KEY as well
+        
         if not data.get("google_api_key") and ("GOOGLE_API_KEY" in os.environ or "GEMINI_API_KEY" in os.environ):
             data["google_api_key"] = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
         if not data.get("openai_api_key") and ("OPENAI_API_KEY" in os.environ or "OPENAI_APIKEY" in os.environ):
@@ -190,21 +189,18 @@ def os_shell_defaults() -> Tuple[str, str]:
 def detect_current_shell() -> str:
     sysname = platform.system()
     if sysname == "Windows":
-        # Detect PowerShell via environment variables typically present in PS sessions
         if os.environ.get("PSModulePath") or os.environ.get("PowerShellEdition"):
             return "powershell"
         comspec = (os.environ.get("ComSpec", "").lower())
         if "cmd.exe" in comspec:
             return "cmd"
         return "powershell"
-    # POSIX/macOS: use SHELL
     shell_path = os.environ.get("SHELL", "")
     base = os.path.basename(shell_path).lower()
     if base in {"zsh", "bash"}:
         return base
     if base in {"fish", "sh"}:
         return "bash"
-    # Default per-OS
     return os_shell_defaults()[1]
 
 
@@ -258,7 +254,7 @@ def execute_in_shell(command: str, shell: str, timeout: int) -> Tuple[int, str, 
             cmd = ["cmd.exe", "/C", command]
         elif shell == "zsh":
             cmd = ["/bin/zsh", "-lc", command]
-        else:  # bash default
+        else:  
             cmd = ["/bin/bash", "-lc", command]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         stdout = (result.stdout or "").strip()
@@ -324,15 +320,12 @@ def main() -> None:
         sys.exit(1)
 
     config = load_config()
-    # Provider selection
     provider = normalize_provider_name(args.provider or config.get("provider", "google"))
-    # Require an explicit model selection by the user
     if not args.model:
         model_hint = "e.g., gemini-1.5-pro" if provider == "google" else "e.g., gpt-4o-mini"
         print(f"{ANSI_RED}No model specified for provider '{provider}'. Use --model <name> ({model_hint}).{ANSI_RESET}")
         sys.exit(1)
 
-    # Resolve shell
     sysname, default_shell = os_shell_defaults()
     shell = detect_current_shell() if args.shell == "auto" else args.shell
 

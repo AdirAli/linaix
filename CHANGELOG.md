@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.1.4] - 2025-12-27
+
+### Changed
+- Migrated Google provider to the new `google.genai` SDK with client cleanup and GEMINI_API_KEY support.
+-Created support to macOS and windowOs
+-Removed feature like the verbiose and natural language terminal
+### Fixed
+- Corrected package versioning for PyPI publication.
+
+
+## [0.1.3] - 2025-12-26
+
+### Added
+- Cross-platform shell support (bash, zsh, PowerShell, cmd) with auto-detection.
+- Multi-provider abstraction: Google Gemini and OpenAI ChatGPT with `--provider` and `--model` flags.
+- Safety improvements: single-command enforcement, confirmation by default, expanded blocklist and suspicious pattern detection.
+
+### Changed
+- Major simplification: removed interactive shell, history, aliases, and animations to focus on generation and execution.
+- Documentation simplified and made task-focused.
+
+
 ## [0.1.2] - Update - 2025-08-07
 
 ### Fixed

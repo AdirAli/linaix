@@ -8,9 +8,9 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="linaix",
-    version="0.1.3",
+    version="0.1.4",
     author="Adir Ali Yerima",
-    description="A Linux terminal interface with natural language processing capabilities",
+    description="Cross-platform command generator from natural language (Linux/macOS/Windows)",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/AdirAli/linaix",
