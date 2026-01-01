@@ -22,9 +22,12 @@ from .providers import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
+#store user conifguraton in a hidden folder
 CONFIG_DIR = Path.home() / ".linaix"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
+#styling for terminal output 
 ANSI_GREEN = "\033[1;32m"
 ANSI_RED = "\033[1;31m"
 ANSI_YELLOW = "\033[1;33m"
@@ -32,6 +35,7 @@ ANSI_BLUE = "\033[1;34m"
 ANSI_CYAN = "\033[1;36m"
 ANSI_RESET = "\033[0m"
 
+# limits input lenght to avoid excessive usage and accidental long prompts
 MAX_INPUT_LENGTH = 800
 MAX_COMMAND_LENGTH = 400
 COMMAND_TIMEOUT = 30
@@ -66,6 +70,7 @@ BLOCKED_BASE_COMMANDS = {
     "pkexec",
 }
 
+#flagging potentially destructive commands
 SUSPICIOUS_PATTERNS = [
     re.compile(r"rm\s+-rf\s+/"),
     re.compile(r":\(\)\s*\{.*:\|.*:&.*\};:"),
@@ -81,9 +86,8 @@ class ValidationError(Exception):
 class CommandSafetyError(Exception):
     """Raised when a generated command is unsafe to run automatically."""
 
-
+#load and save user configuration with proper permission and handling of env vars for api keys
 def load_config() -> Dict[str, Any]:
-    """Load config, creating defaults if needed."""
     try:
         if not CONFIG_DIR.exists():
             CONFIG_DIR.mkdir(mode=0o700)
@@ -114,7 +118,7 @@ def load_config() -> Dict[str, Any]:
         print(f"{ANSI_RED}Error loading config: {exc}{ANSI_RESET}")
         sys.exit(1)
 
-
+#write the config dict to root as json file with specific permissions
 def save_config(config: Dict[str, Any]) -> None:
     try:
         if not CONFIG_DIR.exists():
@@ -125,7 +129,7 @@ def save_config(config: Dict[str, Any]) -> None:
     except OSError as exc:
         print(f"{ANSI_RED}Error saving config: {exc}{ANSI_RESET}")
 
-
+#check if user input is safe and valid under the lenght limit and have no shell operators
 def validate_input(user_input: str) -> str:
     if not isinstance(user_input, str) or not user_input.strip():
         raise ValidationError("Task must be a non-empty string")
@@ -135,7 +139,7 @@ def validate_input(user_input: str) -> str:
         raise ValidationError("Task must not contain shell control characters (;, |, &, <, >, `, $)")
     return user_input.strip()
 
-
+#check if the generated command is safe, under the length limit and have no shell operators
 def validate_command(command: str) -> str:
     if not isinstance(command, str) or not command.strip():
         raise ValidationError("Generated command is empty")
@@ -145,7 +149,7 @@ def validate_command(command: str) -> str:
         raise CommandSafetyError("Generated command contains chained or subshell operators; single commands only")
     return command.strip()
 
-
+#divide the result into the base command and the arguments for the task
 def parse_command(command: str) -> Tuple[str, List[str]]:
     command = validate_command(command)
     try:
@@ -156,11 +160,11 @@ def parse_command(command: str) -> Tuple[str, List[str]]:
         raise ValidationError("Generated command is empty after parsing")
     return parts[0].lower(), parts
 
-
+#check if base command is in the blocked list 
 def is_blocked(base_command: str) -> bool:
     return base_command in BLOCKED_BASE_COMMANDS
 
-
+#check if the command looks destructive
 def looks_destructive(command: str) -> bool:
     lowered = command.lower()
     if any(pattern.search(lowered) for pattern in SUSPICIOUS_PATTERNS):
@@ -176,7 +180,7 @@ def clean_model_output(text: str) -> str:
             return line.strip()
     return cleaned
 
-
+#check the platform and return the default os name and shell
 def os_shell_defaults() -> Tuple[str, str]:
     sysname = platform.system()
     if sysname == "Windows":
@@ -185,7 +189,7 @@ def os_shell_defaults() -> Tuple[str, str]:
         return sysname, "zsh"
     return sysname, "bash"
 
-
+#detect the user's actuall shell form environment variable
 def detect_current_shell() -> str:
     sysname = platform.system()
     if sysname == "Windows":
@@ -203,7 +207,7 @@ def detect_current_shell() -> str:
         return "bash"
     return os_shell_defaults()[1]
 
-
+#LLM instruction and system context
 def build_prompt(task: str, shell: str, sysname: str) -> str:
     base = (
         "You are an assistant that writes exactly one command for the user's system. "
@@ -215,7 +219,7 @@ def build_prompt(task: str, shell: str, sysname: str) -> str:
     task_note = f"Task: {task}"
     return base + os_note + cwd_note + task_note
 
-
+#call the LLM API to generate a command and return a clean output
 def generate_command(task: str, provider: str, model_name: str, shell: str, sysname: str) -> str:
     prompt = build_prompt(task, shell, sysname)
     provider_norm = normalize_provider_name(provider)
@@ -228,7 +232,7 @@ def generate_command(task: str, provider: str, model_name: str, shell: str, sysn
     except ProviderError as exc:
         raise ValidationError(str(exc))
 
-
+#run the generate command and return the resulted output 
 def execute_command(command_parts: List[str], timeout: int) -> Tuple[int, str, str]:
     try:
         result = subprocess.run(
@@ -245,7 +249,7 @@ def execute_command(command_parts: List[str], timeout: int) -> Tuple[int, str, s
     except OSError as exc:
         return 126, "", f"OS error: {exc}"
 
-
+#run command in specified shell and return the output
 def execute_in_shell(command: str, shell: str, timeout: int) -> Tuple[int, str, str]:
     try:
         if shell == "powershell":
@@ -267,13 +271,14 @@ def execute_in_shell(command: str, shell: str, timeout: int) -> Tuple[int, str, 
     except OSError as exc:
         return 126, "", f"OS error: {exc}"
 
-
+#confirm whether the command should be executed
 def confirm(prompt: str) -> bool:
     answer = input(prompt).strip().lower()
     return answer in {"y", "yes"}
 
 
 def main() -> None:
+    # setup command-line arguments with all the options
     parser = argparse.ArgumentParser(description="Generate and optionally run a single shell command from natural language")
     parser.add_argument("task", nargs="*", help="What you want to do")
     parser.add_argument("--provider", choices=["google", "openai"], default=None, help="LLM provider to use (default from config)")
@@ -287,7 +292,7 @@ def main() -> None:
     parser.add_argument("--set-openai-key", help="Store OpenAI API key and exit")
 
     args = parser.parse_args()
-
+    #set api keys and save to config if provided
     if args.set_google_key or args.set_openai_key or args.set_api_key:
         config = load_config()
         if args.set_google_key:
@@ -313,12 +318,14 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
+    #verify user task before sendin it to the LLM
     try:
         validated_task = validate_input(task_text)
     except ValidationError as exc:
         print(f"{ANSI_RED}Invalid task: {exc}{ANSI_RESET}")
         sys.exit(1)
 
+    #detect OS and hsell to generate the correct command
     config = load_config()
     provider = normalize_provider_name(args.provider or config.get("provider", "google"))
     if not args.model:
@@ -347,6 +354,7 @@ def main() -> None:
         print(f"{ANSI_RED}Command generation failed: {exc}{ANSI_RESET}")
         sys.exit(1)
 
+    #show the gerenated command
     print(f"{ANSI_BLUE}Generated:{ANSI_RESET} {ANSI_GREEN}{command}{ANSI_RESET}")
 
     if args.dry_run:

@@ -1,5 +1,5 @@
 # LinAIx 
-[![PyPI Downloads](https://static.pepy.tech/personalized-badge/linaix?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/linaix)
+
 > Simple, safe, cross-platform command generation from natural language
 
 Describe what you want in plain English — LinAIx generates the appropriate shell command for your OS and runs it after confirmation.
@@ -102,5 +102,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [![GitHub stars](https://img.shields.io/github/stars/AdirAli/linaix?style=social)](https://github.com/AdirAli/linaix)
 [![GitHub forks](https://img.shields.io/github/forks/AdirAli/linaix?style=social)](https://github.com/AdirAli/linaix)
 [![GitHub issues](https://img.shields.io/github/issues/AdirAli/linaix)](https://github.com/AdirAli/linaix/issues)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/linaix?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/linaix)
 
 </div>

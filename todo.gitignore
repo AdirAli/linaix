@@ -1,10 +1,13 @@
 fully test the current version for bugs (done)
 work on support of different linux distros (done)
 Publish the 0.1.1 version to pypi (done)
-build support for window and apple terminal (could require rebranding)
+build support for window and apple terminal (done)
 upload the documention on pypi (done)
-Logic that would support other llm 
+Logic that would support other llm (done chatgpt added)
 
+bug: 
+window command prompt: "'linaix' is not recognized as an internal or external command,
+operable program or batch file." Most likely a path issues
 
 bugs: 
 when api not found --help and --setup not working (fixed)
